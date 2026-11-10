@@ -69,6 +69,9 @@ jobs:
       - name: Build trusted QA execution image
         if: env.SDLC_TASK_ID != ''
         run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+      - name: Prepare host for the nested QA sandbox
+        if: env.SDLC_TASK_ID != ''
+        run: python infra/prepare_runner.py
       - name: Run queued Codex QA assessment when present
         if: env.SDLC_TASK_ID != ''
         env:

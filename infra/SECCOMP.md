@@ -8,3 +8,5 @@ Run a no-key compatibility check:
 ```powershell
 docker run --rm --cap-drop=ALL --security-opt=no-new-privileges --security-opt=seccomp=infra/seccomp-codex.json systemslabs-agent:local codex sandbox -- /usr/bin/true
 ```
+
+AppArmor hosts additionally load `infra/apparmor-codex` through `infra/prepare_runner.py`. This is the pinned Moby container profile with namespace construction/mount permissions for bubblewrap, retaining its `/proc`, `/sys`, networking, signal and tracing restrictions. It applies only to these worker containers; no host-wide security settings are disabled. Workers remain non-root with all Docker capabilities dropped. Hosted tasks fail before a model call if the inner sandbox cannot start.

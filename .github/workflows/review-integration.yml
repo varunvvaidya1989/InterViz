@@ -74,6 +74,9 @@ jobs:
       - name: Build trusted independent-review image
         if: env.SDLC_ACTION == 'review'
         run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+      - name: Prepare host for the nested review sandbox
+        if: env.SDLC_ACTION == 'review'
+        run: python infra/prepare_runner.py
       - name: Run queued independent Codex diff-only review
         if: env.SDLC_ACTION == 'review'
         env:

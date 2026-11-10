@@ -80,6 +80,9 @@ jobs:
       - name: Build trusted worker execution image
         if: env.SDLC_ACTION == 'worker'
         run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+      - name: Prepare host for the nested worker sandbox
+        if: env.SDLC_ACTION == 'worker' || env.SDLC_ACTION == 'provider-check'
+        run: python infra/prepare_runner.py
       - name: Execute queued Codex worker through isolated adapter
         if: env.SDLC_ACTION == 'worker'
         env:

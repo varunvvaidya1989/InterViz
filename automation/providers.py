@@ -91,6 +91,8 @@ class DockerAgent:
         command = ["docker", "run", "--rm", "--interactive", "--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--security-opt=seccomp="+str(profile), "--pids-limit=256", "--memory=4g", "--cpus=2", "--mount", f"type=bind,source={workspace},target=/workspace", "--workdir", "/workspace"]
         if hasattr(os,"getuid"):
             command += ["--user", f"{os.getuid()}:{os.getgid()}"]
+        if os.environ.get("SDLC_APPARMOR_PROFILE")=="systemslabs-codex":
+            command += ["--security-opt=apparmor=systemslabs-codex"]
         command += ["--env", "HOME=/tmp/agent-home", "--env", "CODEX_HOME=/workspace/.agent-output/codex-home"]
         key = "OPENAI_API_KEY" if provider == "codex" else "ANTHROPIC_API_KEY"
         command += ["--env", "CODEX_API_KEY" if provider == "codex" else key, self.image, provider]
