@@ -168,7 +168,7 @@ def record_ci_run(p,client,control,run):
         prs=[{"number":int(match[1])}];target=match[2]
         if not kv("ci-queued:"+target):return
     else:return
-    receipt="ci-run:"+str(run["id"])+":"+str(run.get("run_attempt",1))
+    receipt="ci-run:"+str(run["id"])
     if kv(receipt):return
     for ref in prs:
         pr=client.pr(ref["number"])

@@ -17,7 +17,7 @@ from automation import cli
 
 
 class RuntimeTests(unittest.TestCase):
-    def test_ci_waits_for_approval_and_records_each_completed_attempt_once(self):
+    def test_ci_waits_for_approval_and_preserves_existing_receipts(self):
         p=cli.policy();target='a'*40;values={}
         client=MagicMock();client.root='/repos/test/repo';client.repository='test/repo'
         client.request.return_value={'id':7}
@@ -33,15 +33,19 @@ class RuntimeTests(unittest.TestCase):
         with patch.object(cli,'kv',side_effect=kv), patch.object(cli,'pr_files',return_value=([],[])):
             cli.record_ci_run(p,client,control,run)
             control.record_ci.assert_not_called();self.assertEqual(values,{})
-            run['conclusion']='failure'
-            cli.record_ci_run(p,client,control,run)
-            self.assertFalse(control.record_ci.call_args.args[3])
-            run.update(run_attempt=2,conclusion='success')
+            run['conclusion']='success'
             cli.record_ci_run(p,client,control,run)
             self.assertTrue(control.record_ci.call_args.args[3])
             cli.record_ci_run(p,client,control,run)
-            self.assertEqual(control.record_ci.call_count,2)
-            self.assertEqual(set(values),{'ci-run:123:1','ci-run:123:2'})
+            self.assertEqual(control.record_ci.call_count,1)
+            self.assertEqual(set(values),{'ci-run:123'})
+            # Existing receipts are authoritative; a controller upgrade must not
+            # replay historical runs in reverse order over current evidence.
+            values.update({'ci-run:200':{'processed':True},'ci-run:100':{'processed':True}})
+            for run_id,conclusion in [(200,'failure'),(100,'success')]:
+                run.update(id=run_id,conclusion=conclusion)
+                cli.record_ci_run(p,client,control,run)
+            self.assertEqual(control.record_ci.call_count,1)
 
     def test_review_checks_exact_candidate_with_trusted_instructions_and_fails_closed(self):
         p=cli.policy()
