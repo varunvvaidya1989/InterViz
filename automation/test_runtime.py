@@ -28,6 +28,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotIn('--dangerously-bypass-approvals-and-sandbox',command)
         self.assertNotIn('GH_TOKEN',' '.join(command));self.assertNotIn('docker.sock',' '.join(command))
         self.assertIn('CODEX_API_KEY',command)
+        self.assertIn('--interactive',command)
 
     def test_path_scope_protected_paths_and_traversal(self):
         check_changed_paths(['apps/web/a.ts'],['apps/web/'])

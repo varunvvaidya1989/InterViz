@@ -87,10 +87,10 @@ class DockerAgent:
     def command(self, workspace, role, provider, model=None, max_turns=12, budget_usd=2):
         if role not in ROLES or provider not in {"codex", "claude"}: raise ValueError("Invalid role/provider.")
         workspace = Path(workspace).resolve()
-        command = ["docker", "run", "--rm", "--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--memory=4g", "--cpus=2", "--mount", f"type=bind,source={workspace},target=/workspace", "--workdir", "/workspace"]
+        command = ["docker", "run", "--rm", "--interactive", "--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--memory=4g", "--cpus=2", "--mount", f"type=bind,source={workspace},target=/workspace", "--workdir", "/workspace"]
         if hasattr(os,"getuid"):
             command += ["--user", f"{os.getuid()}:{os.getgid()}"]
-        command += ["--env", "HOME=/tmp/agent-home"]
+        command += ["--env", "HOME=/tmp/agent-home", "--env", "CODEX_HOME=/workspace/.agent-output/codex-home"]
         key = "OPENAI_API_KEY" if provider == "codex" else "ANTHROPIC_API_KEY"
         command += ["--env", "CODEX_API_KEY" if provider == "codex" else key, self.image, provider]
         if provider == "codex":
@@ -107,6 +107,7 @@ class DockerAgent:
         workspace = Path(workspace).resolve()
         output = workspace / ".agent-output"
         output.mkdir(exist_ok=True)
+        (output / "codex-home").mkdir(exist_ok=True)
         (output / "schema.json").write_text(json.dumps(REPORT_SCHEMA), encoding="utf-8")
         env = sanitized_environment(provider)
         key = "OPENAI_API_KEY" if provider == "codex" else "ANTHROPIC_API_KEY"
