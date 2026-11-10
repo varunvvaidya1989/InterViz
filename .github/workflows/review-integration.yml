@@ -77,7 +77,7 @@ jobs:
       - name: Prepare host for the nested review sandbox
         if: env.SDLC_ACTION == 'review'
         run: python infra/prepare_runner.py
-      - name: Run queued independent Codex diff-only review
+      - name: Run queued independent Codex exact-revision review
         if: env.SDLC_ACTION == 'review'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

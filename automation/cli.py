@@ -157,6 +157,9 @@ def pr_files(client,pr,item,p):
 def record_ci_run(p,client,control,run):
     expected=client.request("GET",client.root+"/actions/workflows/infrastructure-ci.yml")
     if run.get("workflow_id")!=expected["id"] or run.get("status")!="completed":return
+    # GitHub can complete a run while it awaits maintainer approval, before any
+    # job executes. This is not executable CI evidence and may later be rerun.
+    if run.get("conclusion")=="action_required":return
     prs=[]
     if run.get("event")=="pull_request":prs=run.get("pull_requests",[]);target=run["head_sha"]
     elif run.get("event")=="workflow_dispatch":
@@ -255,10 +258,14 @@ def worker(p,args):
     git(["clone","--no-hardlinks",str(ROOT),str(home)],ROOT)
     # Target is a Git object, never a shell fragment. Public repository fetch can
     # prepare a missing object without placing GitHub credentials in a worker.
-    checkout_revision=git(["rev-parse","HEAD"],ROOT) if role=="review" else args.revision
+    # The controller and prompt still come from trusted ROOT. Only the isolated,
+    # credential-free agent workspace contains the exact submitted candidate.
+    checkout_revision=args.revision
     if not git(["rev-parse","--verify",checkout_revision+"^{commit}"],home,check=False):
         git(["fetch","https://github.com/"+p["repository"]["full_name"]+".git",checkout_revision],home)
     git(["checkout","--detach",checkout_revision],home)
+    if git(["rev-parse","HEAD"],home)!=args.revision:
+        raise ValueError("Worker workspace does not match the exact target revision.")
     before=scan_files(home)
     feedback=[e["payload"] for e in control.events(release_id) if e["type"]=="review_recorded" and e["payload"].get("item_id")==item_id]
     assignment={"release_id":release_id,"item_id":item_id,"role":role,"scope":item["scope"],"target_revision":args.revision,"plan_hash":current_hash,"founder_approval":release.get("plan_approved_by"),"release_direction":release.get("metadata"),"approved_plan":manifest.get("document") if manifest else None,"review_feedback":feedback[-4:],"release_items":control.snapshot(release_id)["items"] if role=="qa" else None}

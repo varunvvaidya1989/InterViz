@@ -9,7 +9,7 @@ The founder supplies direction and release scope. The lead prepares stories, UX,
 - Transactional SQLite ledger with immutable audit chain and restart-safe records.
 - Exact plan/scope approval, independent current-head review/CI, task leases/path ownership, two-attempt rework, QA bugs and exact-candidate release approval.
 - Signed GitHub `sdlc-state` snapshots with compare-and-swap updates. Controller state is separate from learner data.
-- Docker-contained Codex workers, default-branch controller code, diff-only independent review, clean-clone publication, scoped file checks and protected policy/infrastructure paths.
+- Docker-contained Codex workers, default-branch controller code, exact-revision independent review, clean-clone publication, scoped file checks and protected policy/infrastructure paths.
 - GitHub issue forms, CI, agent control, review/integration, staging-QA and founder-release workflows.
 - Explicit CI dispatch for bot-created PRs, plus durable reconciliation of CI and founder-comment facts. A scheduled recovery pulse handles coalesced Actions events.
 
@@ -55,3 +55,9 @@ The ledger API can also be exercised through `python -m automation.control --hel
 ## Current boundaries
 
 No real SaaS story or release plan has been approved by this bootstrap. Stripe, learner auth, app containers, hosting targets and commercial launch remain their own specification milestones. Live agents cannot skip those gates. Source PDFs, secrets, local state, tools and screenshots remain excluded from the repository/image where configured.
+
+## Recovering review and approval-waiting CI
+
+Independent review checks the queued exact candidate in an isolated read-only sandbox; the controller and reviewer role instructions stay on the trusted default branch. If an older controller reviewed only a diff against main, integrate the independently reviewed controller repair before requesting another bounded review. Exhausted attempts need lead/controller rework; do not edit signed state to reset them.
+
+GitHub action_required means a maintainer must approve the workflow before tests run. The controller does not treat this as executable CI evidence or consume its run receipt. Existing completed-run receipts remain unchanged to prevent historical replay. For a run already consumed by the older controller, dispatch a fresh CI run; attempt-level receipt migration is deferred. Existing failure records are not rewritten locally. Hosted CI and exact-revision review must both pass before protected integration.

@@ -83,3 +83,7 @@ Adopt GitHub Actions as the proposed CI/job/deployment coordination layer and Do
 | OPEN-05 | Company names in themed bundles | Company-themed publication/marketing | Neutral generic labels |
 
 Name suggestion for later owner review: **TraceForge**. It is a creative suggestion only; domain/trademark availability has not been checked. Do not replace the provisional label without the owner's OPEN-01 decision.
+
+## ADR-018 - Exact candidate workspaces and CI attempt evidence
+
+Independent review must inspect the queued submitted commit in its isolated worker workspace. The default-branch controller supplies imports, reviewer role instructions and the agent image; candidate files remain untrusted and sandboxed. A missing object or mismatched HEAD stops execution before any model call. The authenticated diff remains available as context. GitHub action_required is approval waiting, not executed CI evidence. Preserve existing CI receipt identities to prevent historical replay. Approval-waiting runs do not consume receipts. Previously consumed runs need a fresh CI dispatch; attempt-level migration is deferred until evidence ordering is designed and verified. This infrastructure repair does not alter founder approval or acceptance requirements. See docs/plans/INFRA-PR-51-REVIEW.md for scope and evidence.
