@@ -87,7 +87,8 @@ class DockerAgent:
     def command(self, workspace, role, provider, model=None, max_turns=12, budget_usd=2):
         if role not in ROLES or provider not in {"codex", "claude"}: raise ValueError("Invalid role/provider.")
         workspace = Path(workspace).resolve()
-        command = ["docker", "run", "--rm", "--interactive", "--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--pids-limit=256", "--memory=4g", "--cpus=2", "--mount", f"type=bind,source={workspace},target=/workspace", "--workdir", "/workspace"]
+        profile=Path(__file__).resolve().parents[1]/"infra/seccomp-codex.json"
+        command = ["docker", "run", "--rm", "--interactive", "--init", "--cap-drop=ALL", "--security-opt=no-new-privileges", "--security-opt=seccomp="+str(profile), "--pids-limit=256", "--memory=4g", "--cpus=2", "--mount", f"type=bind,source={workspace},target=/workspace", "--workdir", "/workspace"]
         if hasattr(os,"getuid"):
             command += ["--user", f"{os.getuid()}:{os.getgid()}"]
         command += ["--env", "HOME=/tmp/agent-home", "--env", "CODEX_HOME=/workspace/.agent-output/codex-home"]
@@ -110,6 +111,11 @@ class DockerAgent:
         (output / "codex-home").mkdir(exist_ok=True)
         (output / "schema.json").write_text(json.dumps(REPORT_SCHEMA), encoding="utf-8")
         env = sanitized_environment(provider)
+        if provider == "codex":
+            command=self.command(workspace,role,provider,model,max_turns,budget_usd)
+            preflight=command[:command.index(self.image)+1]+["codex","sandbox","--","/usr/bin/true"]
+            check=self.runner(preflight,input="",text=True,encoding="utf-8",capture_output=True,timeout=30,env={k:v for k,v in env.items() if not k.endswith("API_KEY")},check=False)
+            if check.returncode:raise RuntimeError("Container cannot enforce the nested Codex sandbox; no paid model task was started.")
         key = "OPENAI_API_KEY" if provider == "codex" else "ANTHROPIC_API_KEY"
         if not env.get(key): raise ValueError(f"Set {key} in the worker environment; never put it in a prompt.")
         if provider == "codex": env["CODEX_API_KEY"] = env.pop("OPENAI_API_KEY")
