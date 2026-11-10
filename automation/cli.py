@@ -362,6 +362,10 @@ def reconcile(p,args):
                 kv(key,{"revision":base,"time":time.time()},True);client.dispatch("agent-control.yml",{"action":"worker","role":"lead","task-id":reference,"revision":base});scheduled.append(key)
             continue
         for item in control.snapshot(release["id"])["items"]:
+            issue_key="work-issue:"+release["id"]+":"+item["kind"]+":"+item["id"]
+            if item["kind"]=="story" and not kv(issue_key):
+                issue=client.create_issue("[Story] "+item["title"][:180],f"Release: {release['id']}\nItem: {item['id']}\n\nAcceptance:\n"+"\n".join("- "+a for a in item["scope"]["acceptance"])+"\n\nScope: "+", ".join(item["scope"]["allowed_paths"]),labels=["sdlc:story"])
+                kv(issue_key,issue["number"],True)
             if item["status"]=="OPEN" and item["attempts"]>=item["max_attempts"]:
                 marker="escalated:"+release["id"]+":"+item["id"]
                 if not kv(marker):
@@ -372,6 +376,10 @@ def reconcile(p,args):
             kv("protected:"+item["pr_url"],protected,True)
             if pr["head"]["sha"]!=item["head_sha"]:
                 control.associate_pr(release["id"],item["id"],pr["head"]["sha"],pr["html_url"],pr["user"]["login"],"github:head-update",kind=item["kind"]);continue
+            if pr.get("merged"):
+                if pr.get("merged_by",{}).get("login") not in p["founders"]["usernames"]:raise ValueError("Out-of-controller merge requires founder reconciliation.")
+                control.integrate(release["id"],item["id"],item["head_sha"],pr["merge_commit_sha"],"github:founder-merge",kind=item["kind"])
+                continue
             key="queue:review:"+release["id"]+":"+item["kind"]+":"+item["id"]
             queued=kv(key)
             if not kv("reviewed:"+release["id"]+":"+item["kind"]+":"+item["id"]+":"+item["head_sha"]) and (not queued or queued.get("revision")!=item["head_sha"] or queued.get("time",0)<time.time()-1800):

@@ -114,7 +114,9 @@ class DockerAgent:
         if provider == "codex": env["CODEX_API_KEY"] = env.pop("OPENAI_API_KEY")
         result = self.runner(self.command(workspace, role, provider, model, max_turns, budget_usd), input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, env=env, check=False)
         if result.returncode:
-            raise RuntimeError("Development agent failed; provider output is withheld to avoid exposing credentials. Inspect restricted worker diagnostics.")
+            diagnostic=(result.stdout+result.stderr).lower()
+            category=next((label for pattern,label in [("insufficient_quota","API quota/billing"),("invalid_api_key","API authentication"),("401 unauthorized","API authentication"),("model_not_found","model access"),("bwrap","container sandbox"),("permission denied","execution permissions")] if pattern in diagnostic),"provider execution")
+            raise RuntimeError("Development agent failed ("+category+"); raw provider output is withheld to avoid exposing credentials.")
         if provider == "codex":
             report = json.loads((output / "report.json").read_text(encoding="utf-8"))
         else:
