@@ -1,0 +1,731 @@
+{
+  "release_id": "R-1",
+  "title": "M1-FOUNDATION — identity, onboarding and empty dashboard",
+  "milestone": "M1",
+  "status": "PROPOSED_PLANNING_ONLY",
+  "target_revision": "ba8062a750c83247d0694ac7febe4e0758d4bd85",
+  "source": {
+    "specification": "planning/Systems Labs Product Specification.md",
+    "specification_version": "1.0",
+    "specification_sha256": "31afbaa2528e21e984332d86629d493d7b4d6aaec38853c6fcb796714a581017",
+    "starting_plan": "docs/plans/M1.md",
+    "runtime_contract": "automation/README.md",
+    "trusted_policy": "automation/policy.json",
+    "accepted_contracts": [
+      "docs/decisions.md",
+      "docs/data/DATA_CONTRACTS.md",
+      "docs/design/LEARNING_EXPERIENCE_CONTRACT.md",
+      "docs/operations/DELIVERY_GATES.md"
+    ]
+  },
+  "authority": {
+    "founder_plan_approval": null,
+    "application_implementation_authorized": false,
+    "stop_after": "M1",
+    "current_worker_write_scope": [
+      "docs/releases/R-1"
+    ],
+    "publication": "Trusted controller publishes planning PR and exact hash command after worker submission; this worker cannot publish or approve.",
+    "protected_changes": "Separate founder acceptance and independent review under current policy; approval of this plan cannot waive protected-path controls."
+  },
+  "scope": {
+    "included": [
+      "Typed monorepo/application CI",
+      "Accessible translated design foundation",
+      "Full identity lifecycle and database",
+      "Skippable onboarding/profile",
+      "Empty learner dashboard",
+      "Minimal M1 privacy lifecycle",
+      "Isolated staging, real-provider QA and tested recovery"
+    ],
+    "excluded": [
+      "M2+ features and dispatch",
+      "Algorithms/visualizer/lab engine/mastery scoring",
+      "Billing/payments/commercial launch",
+      "AI tutor/coach",
+      "Admin content tools",
+      "Prototype migration/retirement",
+      "Production deployment/publication",
+      "Third-party source publication"
+    ]
+  },
+  "user_stories": [
+    {
+      "id": "M1-OPS-001",
+      "title": "Create reproducible application workspace while preserving prototype",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "eslint.config.mjs",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "Dockerfile",
+        ".dockerignore",
+        "compose.yaml",
+        "apps/web/package.json",
+        "apps/web/next.config.ts",
+        "apps/web/tsconfig.json",
+        "apps/web/src/app/layout.tsx",
+        "apps/web/src/app/page.tsx",
+        "packages/db/package.json",
+        "packages/db/tsconfig.json",
+        "packages/ui/package.json",
+        "packages/ui/tsconfig.json",
+        "packages/i18n/package.json",
+        "packages/i18n/tsconfig.json",
+        "docs/operations/M1/workspace.md",
+        "apps/web/tests/bootstrap"
+      ],
+      "depends_on": [],
+      "requirements": [
+        "FND-001",
+        "NFR-001",
+        "NFR-004"
+      ],
+      "acceptance": [
+        "Pin compatible Node/pnpm/dependencies after checking official release documentation; frozen lockfile install works in clean container with TypeScript, Next.js, Drizzle, Zod, Better Auth, Vitest/Playwright/Storybook.",
+        "Root scripts expose lint, typecheck, test:unit, test:integration, test:e2e, build, check:i18n and check:security; service credentials are synthetic test values. Local compose provides isolated PostgreSQL/Redis/mail capture.",
+        "Use explicit build context/copy allowlist: no PDFs, prototype, .git, .sdlc, automation, private corpus or credentials in learner image. Existing prototype files remain unchanged and runnable as reference.",
+        "Provide server shell and health readiness contract; no admin, algorithm, lab, billing or coach implementations. Handoff transfers layout ownership to UI task and manifests remain leased to DevOps.",
+        "This dependency-free infrastructure bootstrap runs only after exact-plan approval and under explicit existing infrastructure authorization. Add nonempty shell/health/smoke and configuration tests for baseline scripts; do not claim these test the later identity features."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-OPS-003",
+      "title": "Configure application CI and controller prerequisites through protected review",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        ".github/workflows/application-ci.yml",
+        "automation/policy.json",
+        "infra/staging",
+        "docs/operations/M1/checks.md"
+      ],
+      "depends_on": [
+        "M1-OPS-001"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-003",
+        "NFR-001",
+        "NFR-005",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Propose protected patch for real SaaS CI and staging adapter configuration, without weakening existing gates, changing founder identity, budgets or release scope. Separate trusted founder acceptance of protected paths is mandatory before integration; this plan approval does not self-authorize that patch.",
+        "Configure checks.application_configured=true only after real checks.application entries, commands and gates.required_application_status_checks match application-ci.yml and run nonempty bootstrap smoke suites. Job runs frozen install, lint, types, unit/integration, browser E2E, build, localization and dependency/security checks with isolated services. No continue-on-error, empty suites or prototype/infrastructure checks count as SaaS feature success.",
+        "Ensure bot PR/current-head check reconciliation and combined candidate CI are exercised by trusted controller; preserve infrastructure checks. The initial workspace/CI bootstrap uses existing infrastructure gates plus independent clean local app checks; after configuration is accepted all subsequent app integrations require registered current-head application checks.",
+        "Define protected staging adapter interface, candidate SHA/image digest and evidence output. Keep credentials out of manifests and prompts. Unconfigured adapter or required check must fail closed, never be replaced by a placeholder success.",
+        "Current CLI rejects every non-infrastructure story while application checks are unconfigured, including lead/UX. Therefore OPS-001 and OPS-003 are explicitly infrastructure bootstrap tasks and run first; no proposed exception or policy weakening is used. Policy changes invalidate the computed plan approval: after protected patch acceptance the trusted controller must recompute/reapprove exact plan against new policy before ordinary application dispatch."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-LEAD-001",
+      "title": "Resolve approved contracts and record exclusive ownership",
+      "role": "lead",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/plans/M1.md",
+        "docs/decisions.md",
+        "docs/contracts/M1",
+        "docs/releases/R-1/execution"
+      ],
+      "depends_on": [
+        "M1-OPS-003"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-004"
+      ],
+      "acceptance": [
+        "Require controller-signed exact-plan approval matching specification and policy; no application dispatch before approval.",
+        "Reconcile M1.md and ADR-017 with implemented runtime; record this existing Git baseline, source hashes and approved-plan reference. Never initialize a replacement repository or invoke pre-Git exception.",
+        "Write concrete request/response/state/error contracts, version-pin verification checklist, acceptance mapping and exclusive file leases. Resolve each task base to the accepted integrated predecessor commit before dispatch; never reuse the planning base blindly.",
+        "No unresolved tool/path/budget placeholder is dispatched. Protected configuration changes go through separate trusted founder acceptance; lead cannot edit approvals or release scope."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-UX-001",
+      "title": "Specify accessible identity, onboarding and empty dashboard",
+      "role": "ui-ux",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/design/M1"
+      ],
+      "depends_on": [
+        "M1-LEAD-001"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "FND-008",
+        "NFR-002"
+      ],
+      "acceptance": [
+        "Provide screen/state/component contracts for every flow in ui_ux, translation-key inventory, form field rules, phone/tablet/desktop layouts and light/dark token contrast values.",
+        "Specify keyboard focus, screen-reader errors/status, non-colour indicators, reduced motion, OAuth/mail failure recovery and privacy export/delete confirmations.",
+        "Walk through skip/save/edit onboarding and measure designed normal path against <60 seconds; dashboard never presents synthetic mastery or an unusable future-feature action."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-CODE-001",
+      "title": "Implement identity database and protected auth API",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/db/src",
+        "packages/db/tests",
+        "packages/db/drizzle.config.ts",
+        "apps/web/src/server",
+        "apps/web/src/app/api/v1/auth",
+        "apps/web/src/app/api/v1/health"
+      ],
+      "depends_on": [
+        "M1-OPS-003",
+        "M1-UX-001"
+      ],
+      "requirements": [
+        "FND-003",
+        "FND-004",
+        "NFR-001",
+        "NFR-003",
+        "NFR-004",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Use pinned established auth adapter for email/password, verification/reset, Google/GitHub, secure sessions/revocation and safe verified account linking; no custom crypto. Library bridge remains under /api/v1/auth.",
+        "Create reviewed ordered migrations for user/profile, provider account, session, verification/reset and audit entities only. Fresh DB and seeded-account upgrade tests pass with separate migration/application roles; no future progress/grant tables.",
+        "Validate request/config with Zod; typed safe error envelopes, server authorization on every protected endpoint, CSRF/origin/callback state checks, strict CSP and secure cookie controls. Protect anonymous auth with atomic shared rate limits and signup bot safeguards; Redis outage fails closed with retryable errors.",
+        "Captured-mail tests cover valid/expired/replayed verification/reset, session expiry/revoke, duplicate signup, OAuth state/error/linking collisions and concurrency. Logs/events exclude email addresses, passwords, tokens, answers and sensitive bodies; audit records use minimal pseudonymous IDs."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-CODE-002",
+      "title": "Build translated shared UI and complete authentication journeys",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/ui/src",
+        "packages/ui/tests",
+        "packages/ui/.storybook",
+        "packages/i18n/src",
+        "packages/i18n/tests",
+        "apps/web/src/app/layout.tsx",
+        "apps/web/src/app/page.tsx",
+        "apps/web/src/app/(auth)",
+        "apps/web/src/components",
+        "apps/web/tests/auth"
+      ],
+      "depends_on": [
+        "M1-CODE-001"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-003",
+        "NFR-002",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Implement ui_ux auth flows and all loading/empty/invalid/offline/expired/error/retry states; signup → inbox → verify → sign-in and request → reset → sign-in work with real backend.",
+        "All labels, accessibility names, errors, bot challenges and mail subjects/bodies resolve English translation keys; missing-key and pseudolocalization tests pass. Translate library errors through safe mapping.",
+        "Provide shared accessible primitives, four track colour tokens, system/light/dark preference with readable first paint and 320px-to-desktop responsiveness; keyboard and screen-reader journeys work without pointer input.",
+        "Unit/component/Storybook and Playwright evidence covers auth forms, navigation, focus, OAuth cancel/provider outage, mail retry/rate limits, and theme contrast; live provider evidence remains assigned to staging verification."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-CODE-003",
+      "title": "Deliver skippable onboarding, private profile and truthful dashboard",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(learner)",
+        "apps/web/src/app/api/v1/profile",
+        "apps/web/src/app/api/v1/onboarding",
+        "apps/web/src/app/api/v1/dashboard",
+        "apps/web/tests/learner",
+        "packages/i18n/src"
+      ],
+      "depends_on": [
+        "M1-CODE-002"
+      ],
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "FND-008",
+        "NFR-003",
+        "NFR-004",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Server-session-owned profile reads/updates accept validated background, level, goal, optional calendar date and locale; skip stores explicit skipped state; edit/reload and concurrent update conflict handling preserve data.",
+        "New verified learners see onboarding once or skip to empty dashboard. Dashboard shows separately labelled no-owned-labs/no-completions/no-mastery, empty review/weakness/streak/readiness states with no invented scores, disabled product promises or imported content.",
+        "Clear next action is complete/edit profile. Protected deep links safely return to intended internal page; dashboard-to-profile is one action. Reserve continuation slot for M3 without claiming active-lab resume is delivered.",
+        "Unit/integration/E2E cover every background, enum/date validation, skip/save/update, unverified/anonymous denial, cross-user attacks, loading/error/retry preserving inputs, events and <60-second onboarding usability measurement."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-CODE-004",
+      "title": "Add minimal account export/deletion and consent foundations",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(learner)/settings",
+        "apps/web/src/app/api/v1/privacy",
+        "apps/web/tests/privacy",
+        "packages/i18n/src"
+      ],
+      "depends_on": [
+        "M1-CODE-003"
+      ],
+      "requirements": [
+        "NFR-001",
+        "NFR-003",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Provide reauthenticated owner-only export of M1 personal data and confirmed account deletion with sessions revoked, personal provider/profile/token records removed, minimal audit retention documented; unauthorized or cross-user calls fail.",
+        "Only essential session/theme storage enabled by default; optional analytics remains disabled without consent, no model training or coach data pipeline. Explain retention/backups and deletion replay after restore using translated copy.",
+        "Test export schema/ownership, recent-auth requirement, deletion idempotency and post-delete session denial. Database deletion transactions use existing schema; any new migration requires explicit lease transfer back to schema owner."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-OPS-002",
+      "title": "Deploy exact candidate to isolated staging and exercise recovery",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "infra/staging",
+        "infra/containers",
+        "docs/operations/M1/staging.md",
+        "docs/operations/M1/recovery.md",
+        "docs/releases/R-1/evidence/operations"
+      ],
+      "depends_on": [
+        "M1-CODE-004"
+      ],
+      "requirements": [
+        "FND-001",
+        "NFR-001",
+        "NFR-003",
+        "NFR-004",
+        "NFR-005"
+      ],
+      "acceptance": [
+        "After separately accepted protected changes and configured operator prerequisites, build/deploy an exact integrated candidate to HTTPS staging; record commit, image digest, environment, migration ID, timestamp and health checks. No production deployment.",
+        "Use managed secrets, least-privilege runtime/migration roles, isolated Postgres/Redis/mail, monitored structured logs/errors/traces and daily encrypted backup policy. Learner image/network has no development-control-plane access.",
+        "Run fresh and populated migration, actual backup restore into isolated DB and old/new compatible rollback; record recovered account/session behaviour and deletion suppression. Stop writes and restore backup on incompatible migration rather than blindly running down migrations.",
+        "Provide staging URL, real email sender and Google/GitHub callback readiness, fault-injection checks, alerts/runbook, target 99.9% monitoring and performance profile. Missing host/provider/budget configuration remains outstanding; no fake deployment evidence."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-QA-001",
+      "title": "Independently verify exact integrated M1 and staging evidence",
+      "role": "qa",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/reviews/M1",
+        "docs/releases/R-1/evidence/qa"
+      ],
+      "depends_on": [
+        "M1-OPS-002"
+      ],
+      "requirements": [
+        "GOV-003",
+        "FND-001",
+        "FND-002",
+        "FND-003",
+        "FND-004",
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "FND-008",
+        "NFR-001",
+        "NFR-002",
+        "NFR-003",
+        "NFR-004",
+        "NFR-005",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Execute acceptance_tests on exact integrated commit/build; independent reviewer is a different execution from authors. Report reproducible severity/expected/actual/environment and requirement IDs; do not patch application code.",
+        "Capture hosted CI, real staging email verification/reset and successful Google/GitHub flows; desktop and physical phone staging review plus tablet/emulated checks labelled separately. Missing evidence blocks acceptance.",
+        "Check keyboard/screen-reader/WCAG 2.2 AA, themes, translations, failures, security/privacy, recovery and performance. Changed revisions rerun affected checks; no claim that local/mock/static evidence proves hosted/live success."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    },
+    {
+      "id": "M1-LEAD-002",
+      "title": "Report reviewed M1 acceptance and stop",
+      "role": "lead",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "docs/plans/M1.md",
+        "docs/releases/R-1/evidence/acceptance",
+        "docs/reviews/M1/acceptance.md"
+      ],
+      "depends_on": [
+        "M1-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "acceptance": [
+        "Publish requirement-by-evidence matrix for final exact revision and resolve all MUST failures through bounded rework and independent re-review; record SHOULD target findings explicitly.",
+        "Only after full §15 evidence, record accepted M1 changelog and stop/report. Missing evidence produces incomplete status, never accepted/released. No M2 dispatch.",
+        "Prepare candidate manifest for controller if requested; production publication remains separately gated on exact-candidate founder approval and configured production controls. Worker never merges, pushes, publishes or uses GitHub APIs."
+      ],
+      "estimate_worker_minutes": 20,
+      "evidence": [
+        "Exact submitted commit and dependency revisions",
+        "Commands, outcomes and artifact locations; environment/provider classification",
+        "Independent review at same revision; changed code invalidates affected evidence"
+      ]
+    }
+  ],
+  "ui_ux": {
+    "artifact": "docs/releases/R-1/UX.md",
+    "flows": [
+      "Signup → verification → onboarding or skip → empty dashboard",
+      "Sign-in/email or Google/GitHub → safe internal return path",
+      "Forgot password → mail → valid reset → sign-in",
+      "Dashboard → profile edit or privacy settings → export/delete"
+    ],
+    "states": "UX.md specifies each screen and loading/empty/invalid/error/success transitions, focus and recovery. All UI/email/a11y strings are keys.",
+    "responsiveness": "320px phone, 768px tablet, 1280px desktop; no horizontal page scrolling, hover dependence or inaccessible controls. Physical phone and desktop staging review required.",
+    "accessibility": "WCAG 2.2 AA; visible focus, 24px minimum targets or compliant spacing, adequate text/non-text contrast, labels/error associations, status live regions, reduced motion and no colour-only signals."
+  },
+  "architecture": {
+    "artifact": "docs/releases/R-1/ARCHITECTURE.md",
+    "decisions": [
+      "Retain ADR-002/003 TypeScript/pnpm/Next.js route handlers/PostgreSQL/Drizzle/Zod/Better Auth with Redis shared limits",
+      "Resolve supported maintained versions against official docs during approved implementation; no new package API assumed in this plan",
+      "Separate learner runtime and signed development controller; no development tools or corpus in learner container",
+      "M1 adds only identity/profile/audit data; future immutable content/progress/grant models remain deferred"
+    ],
+    "interfaces": "Versioned validated session-owned routes and safe error envelope; detailed entities, field rules, API contracts and trust boundaries in ARCHITECTURE.md.",
+    "diagrams": [
+      "ARCHITECTURE.md#runtime",
+      "ARCHITECTURE.md#delivery"
+    ]
+  },
+  "operations": {
+    "artifact": "docs/releases/R-1/OPERATIONS.md",
+    "reconciliation": "Harness is implemented per infrastructure verification; existing Git baseline is real. Old planning-only/no-runner/pre-Git statements do not govern runtime capabilities. Application checks empty and hosting adapters absent remain genuine prerequisites. Current CLI blocks even lead/UX non-infrastructure stories before application checks are configured. Infrastructure-only workspace and check registration therefore precede ordinary lead/UX dispatch. Protected policy change requires refreshed exact-plan approval against resulting policy.",
+    "prerequisites": [
+      "Exact signed plan approval",
+      "Reviewed workspace and application CI configuration",
+      "Separate protected-patch acceptance for workflow/policy/infra changes",
+      "Operator-provisioned isolated host/registry/managed DB/Redis/secrets",
+      "Real email sender, OAuth clients and HTTPS callback URLs",
+      "Budget/project spending controls and staging phone access"
+    ],
+    "checks": [
+      "application-lint",
+      "application-typecheck",
+      "application-unit-integration",
+      "application-e2e",
+      "application-build",
+      "application-i18n-security"
+    ],
+    "failure_policy": "No configured check/adapter/evidence means gate outstanding. Fail closed; no waiver via prototype/infrastructure CI.",
+    "recovery": "Daily backups, actual isolated restore, migration compatibility and rollback drill at exact candidate; OPERATIONS.md defines stop/restore procedure."
+  },
+  "acceptance_tests": [
+    {
+      "id": "AT-01",
+      "requirements": [
+        "FND-001"
+      ],
+      "owner_story": "M1-OPS-003",
+      "procedure": "Clean checkout frozen install; lint/types/unit/integration/E2E/build/i18n/security all execute nonempty suites on exact head and integrated candidate; inspect learner image excludes harness/prototype/private corpus.",
+      "required_evidence": "Hosted CI logs + artifact digest; local build is supplementary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-02",
+      "requirements": [
+        "FND-003",
+        "FND-004",
+        "NFR-007"
+      ],
+      "owner_story": "M1-CODE-001",
+      "procedure": "Signup, verification/resend, sign-in/out, reset, session revoke; duplicate/invalid input, expired/reused tokens, linking collisions, CSRF/origin attacks and concurrency; user cannot reach protected pages before verification.",
+      "required_evidence": "Unit/integration and browser fixture runs plus real staging mail journey",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-03",
+      "requirements": [
+        "FND-003"
+      ],
+      "owner_story": "M1-QA-001",
+      "procedure": "Google and GitHub success/cancel/error/state rejection and safe linking; record configured callbacks with secrets redacted.",
+      "required_evidence": "Real staging provider flows required; mocks explicitly separate",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-04",
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-008"
+      ],
+      "owner_story": "M1-CODE-003",
+      "procedure": "Every background saves/reloads; skip/edit, optional date/invalid enums, cross-user read/update denial, stale-update behaviour; time normal onboarding and count profile navigation actions.",
+      "required_evidence": "Unit/integration/E2E plus staging usability; <60 sec SHOULD measured",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-05",
+      "requirements": [
+        "FND-007"
+      ],
+      "owner_story": "M1-CODE-003",
+      "procedure": "New account dashboard distinctly empty for ownership/completion/mastery/review/weakness/streak/readiness; authenticated access only; loading/failure/retry and clear profile action.",
+      "required_evidence": "Component/E2E and desktop/phone staging",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-06",
+      "requirements": [
+        "FND-002",
+        "NFR-002"
+      ],
+      "owner_story": "M1-QA-001",
+      "procedure": "Keyboard-only auth/onboarding/settings, screen-reader labels/errors, focus restoration, both themes/system preference, contrast, reduced motion, pseudolocalization, 320/768/1280 layouts.",
+      "required_evidence": "Automated accessibility plus manual desktop and physical-phone staging; emulation labelled",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-07",
+      "requirements": [
+        "NFR-001",
+        "NFR-007"
+      ],
+      "owner_story": "M1-QA-001",
+      "procedure": "ASVS L2 control map: hashing/library configuration, secure cookies/CSRF/CSP, per-route auth/Zod validation, signup bot/rate limits, shared atomic counters/Redis outage, least-privilege DB, dependency scan and managed secrets.",
+      "required_evidence": "Adversarial integration/staging evidence; document any ASVS gaps",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-08",
+      "requirements": [
+        "NFR-003"
+      ],
+      "owner_story": "M1-CODE-004",
+      "procedure": "Owner export/recent-auth deletion, cross-user denial, deletion replay and session revocation; essential-only storage and analytics consent, no training pipeline, no sensitive log data.",
+      "required_evidence": "Integration/E2E + staging export/delete + restore deletion suppression",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-09",
+      "requirements": [
+        "NFR-004"
+      ],
+      "owner_story": "M1-QA-001",
+      "procedure": "Verify request/error traces and signup/onboarding/drop-off events; opt-out suppresses optional analytics; no email, password, token, raw payload or IP in product events.",
+      "required_evidence": "Event schema/sample redacted sink evidence at candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-10",
+      "requirements": [
+        "NFR-005",
+        "FND-004"
+      ],
+      "owner_story": "M1-OPS-002",
+      "procedure": "Fresh/seeded migrations, daily backup scheduling, actual restore in isolated DB, data checks, restricted roles, rollback compatibility and deletion suppression after restore.",
+      "required_evidence": "Staging operational logs with commit/image/migration/backup IDs",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-11",
+      "requirements": [
+        "NFR-002"
+      ],
+      "owner_story": "M1-QA-001",
+      "procedure": "Measure meaningful-content paint under recorded mid-range phone/4G profile against <2.5 sec target; supporting FCP/LCP; monitor availability target without claiming measured 99.9% history.",
+      "required_evidence": "Staging timing traces and documented metric/profile; visualizer timing deferred to M2",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-12",
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003",
+        "GOV-004"
+      ],
+      "owner_story": "M1-LEAD-002",
+      "procedure": "Every story maps §15 docs/tests/a11y/states/events/flags/staging to exact revision; no absent evidence accepted; no M2/production dispatch.",
+      "required_evidence": "Independent reviews, CI and staging matrix; accepted report only after all MUST gates pass",
+      "status": "NOT_RUN"
+    }
+  ],
+  "delivery_tasks": {
+    "artifact": "docs/releases/R-1/DELIVERY.md",
+    "dependency_graph": {
+      "M1-OPS-001": [],
+      "M1-OPS-003": [
+        "M1-OPS-001"
+      ],
+      "M1-LEAD-001": [
+        "M1-OPS-003"
+      ],
+      "M1-UX-001": [
+        "M1-LEAD-001"
+      ],
+      "M1-CODE-001": [
+        "M1-OPS-003",
+        "M1-UX-001"
+      ],
+      "M1-CODE-002": [
+        "M1-CODE-001"
+      ],
+      "M1-CODE-003": [
+        "M1-CODE-002"
+      ],
+      "M1-CODE-004": [
+        "M1-CODE-003"
+      ],
+      "M1-OPS-002": [
+        "M1-CODE-004"
+      ],
+      "M1-QA-001": [
+        "M1-OPS-002"
+      ],
+      "M1-LEAD-002": [
+        "M1-QA-001"
+      ]
+    },
+    "ownership": "Exclusive paths per story; shared leases and serial handoffs in DELIVERY.md. Proposed paths are not current worker authorization. QA is read-only under current runtime; listed report paths are destinations for trusted controller/lead persistence, not permission for QA to mutate its workspace.",
+    "dispatch_limits": {
+      "max_total_agents": 4,
+      "max_workers": 3,
+      "max_task_minutes": 20,
+      "max_model_tokens": 100000,
+      "max_cost_allocation_usd": 2,
+      "max_attempts": 2,
+      "max_review_rounds": 2,
+      "max_discussion_messages_per_round": 4
+    },
+    "estimate": "11 bounded story contracts at 20 worker-minutes each = 220 first-pass implementation minutes; independent reviews and external setup add time. Decompose before dispatch if a story cannot fit 20 minutes; do not bypass attempt limits. Material plan changes require revised exact-plan approval.",
+    "budget": "$22 first-pass allocation, up to $44 for two attempts across 11 stories; independent reviews, extra bounded sessions and hosting excluded. Not a hard provider spending cap. Total programme budget/project controls unresolved before paid dispatch.",
+    "acceptance_checklist": [
+      "Exact approved plan/spec/policy and accepted dependencies",
+      "Independent exact-head review and all configured SaaS CI checks",
+      "Acceptance test matrix complete at integrated staging candidate",
+      "Unit/E2E, a11y, states, docs, analytics, applicable disabled flags per §15",
+      "Real email/OAuth, phone/desktop staging and recovery evidence",
+      "No unresolved MUST failures or missing required evidence",
+      "Accepted M1 changelog/report; stop before M2",
+      "Separate exact-candidate approval before any production publication"
+    ]
+  },
+  "risks": [
+    {
+      "risk": "Protected CI/policy bootstrap cannot auto-merge or authorize itself",
+      "mitigation": "M1-OPS-003 is explicit infrastructure proposal; trusted operator handles separate founder acceptance; dependent application integration waits."
+    },
+    {
+      "risk": "Hosting/registry/mail/OAuth credentials and costs absent",
+      "mitigation": "Choose simplest compliant operator-supported container target, record region/residency/retention/cost; supply secrets out of band. Local fixtures proceed, staging remains blocked."
+    },
+    {
+      "risk": "Twenty-minute cap too small for auth or recovery",
+      "mitigation": "Checkpoint and split into bounded sessions with preserved ownership/dependencies; two unsuccessful cycles return evidence to lead."
+    },
+    {
+      "risk": "Library adapter/version drift",
+      "mitigation": "Verify official documentation at implementation, pin versions and test security boundaries; no custom crypto fallback."
+    },
+    {
+      "risk": "Prototype/private corpus accidentally shipped",
+      "mitigation": "New app allowlisted Docker inputs, inspect built artifact, preserve prototype untouched."
+    },
+    {
+      "risk": "M1 foundation mistaken for full dashboard/product launch",
+      "mitigation": "Explicit empty states; no fabricated progress or content; stop at M1 and report outstanding evidence."
+    }
+  ],
+  "open_decisions": {
+    "product": "All five specification §14 decisions remain OPEN but none blocks M1 with provisional branding/synthetic fixtures. No prices, sources, countries/tax or coach packaging invented.",
+    "external_configuration": "Operator must select/provision staging host, region, registry, DB/Redis, mail sender, OAuth clients, secret store and monitoring. These are configuration prerequisites rather than new product approval gates."
+  },
+  "supporting_documents": {
+    "docs/releases/R-1/ARCHITECTURE.md": "30d91c05f6b41b8ce65eda48b0beb108da53e672297a11e8224e592c67dc839b",
+    "docs/releases/R-1/DELIVERY.md": "f0c512977998f13d382c2bf243ad36002552d2f44b1fbe9ca489476aa43387ba",
+    "docs/releases/R-1/OPERATIONS.md": "5993fc45aeae1e6847a7d5e2dce1503001a03c33bb05da8f3e739d5628367f9e",
+    "docs/releases/R-1/UX.md": "75646b03c0ebb2913226f1e8799cc646326ff530eb5ea19b070a12ef21e3ff92"
+  }
+}
