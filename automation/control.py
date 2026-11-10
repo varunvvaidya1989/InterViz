@@ -281,6 +281,42 @@ class Control:
             self._event(db, release_id, "plan_submitted", actor, {"plan_hash": plan_hash, "scope_hash": scope_hash})
             return self._decoded(self._release(db, release_id))
 
+    def amend_plan(self, release_id, expected_old_hash, new_hash, actor):
+        """Replace a plan hash without rewriting any started work.
+
+        The trusted caller authenticates actor and verifies the new canonical
+        manifest has identical item contracts/dependencies before calling. Hashes
+        alone cannot prove manifest contents. Here the submitted scope snapshot
+        must still match the ledger. No approval is carried to the new hash.
+        """
+        self._founder(actor)
+        _sha(expected_old_hash, plan=True); _sha(new_hash, plan=True)
+        _require(expected_old_hash != new_hash, "invalid_amendment", "An amendment needs a different plan hash.")
+        with self._tx() as db:
+            release = self._release(db, release_id, True)
+            scope_hash = self._scope_hash(db, release_id)
+            _require(release["plan_scope_hash"] == scope_hash, "scope_changed", "Amendment cannot change item contracts or dependencies.")
+            # Only the current, previously committed transition is a replay.
+            # In particular, an arbitrary stale CAS targeting the current hash
+            # must not be mistaken for a successful amendment.
+            if release["plan_hash"] == new_hash:
+                previous = db.execute("SELECT payload FROM events WHERE release_id=? AND type='plan_amended' ORDER BY seq DESC LIMIT 1", (release_id,)).fetchone()
+                if previous:
+                    payload = json.loads(previous["payload"])
+                    if payload == {"expected_old_hash": expected_old_hash, "new_hash": new_hash, "scope_hash": scope_hash, "actor": actor}:
+                        return self._decoded(release)
+            _require(release["plan_hash"] == expected_old_hash, "stale_plan", "Amendment must compare against the current exact plan hash.")
+            _require(not db.execute("SELECT 1 FROM items WHERE release_id=? AND lease_until>?", (release_id, self.clock())).fetchone(), "lease_active", "Cannot amend a plan while a worker owns an active lease.")
+            # Prevent hash reuse (ABA) from making an old approval or CAS current.
+            for row in db.execute("SELECT type,payload FROM events WHERE release_id=? AND type IN ('plan_submitted','plan_amended')", (release_id,)):
+                payload = json.loads(row["payload"])
+                historical_hash = payload["plan_hash"] if row["type"] == "plan_submitted" else payload["new_hash"]
+                _require(new_hash != historical_hash, "plan_hash_reused", "Amendments require a fresh canonical plan hash.")
+            self._invalidate(db, release_id, "PLAN_SUBMITTED")
+            db.execute("UPDATE releases SET plan_hash=?,plan_approved_hash=NULL,plan_approved_by=NULL WHERE id=?", (new_hash, release_id))
+            self._event(db, release_id, "plan_amended", actor, {"expected_old_hash": expected_old_hash, "new_hash": new_hash, "scope_hash": scope_hash, "actor": actor})
+            return self._decoded(self._release(db, release_id))
+
     def approve_plan(self, release_id, plan_hash, actor):
         self._founder(actor); _sha(plan_hash, plan=True)
         with self._tx() as db:
