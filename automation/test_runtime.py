@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from automation.control import Control
 from automation.github import GitHubError,SnapshotStore,sign_snapshot,verify_snapshot,repository_name
@@ -17,6 +17,98 @@ from automation import cli
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_ci_waits_for_approval_and_records_each_completed_attempt_once(self):
+        p=cli.policy();target='a'*40;values={}
+        client=MagicMock();client.root='/repos/test/repo';client.repository='test/repo'
+        client.request.return_value={'id':7}
+        client.pr.return_value={'number':51,'head':{'sha':target,'repo':{'full_name':client.repository}},'html_url':'fixture://pr/51'}
+        client.info.return_value={'default_branch':'main'}
+        client.file.return_value={'sha':'unchanged-workflow'}
+        control=MagicMock()
+        control.snapshot.return_value={'items':[{'release_id':'R','id':'S','kind':'story','pr_url':'fixture://pr/51','head_sha':target}]}
+        def kv(key,value=None,write=False):
+            if write:values[key]=value
+            return values.get(key)
+        run={'id':123,'workflow_id':7,'status':'completed','event':'pull_request','pull_requests':[{'number':51}],'head_sha':target,'html_url':'fixture://run/123','run_attempt':1,'conclusion':'action_required'}
+        with patch.object(cli,'kv',side_effect=kv), patch.object(cli,'pr_files',return_value=([],[])):
+            cli.record_ci_run(p,client,control,run)
+            control.record_ci.assert_not_called();self.assertEqual(values,{})
+            run['conclusion']='failure'
+            cli.record_ci_run(p,client,control,run)
+            self.assertFalse(control.record_ci.call_args.args[3])
+            run.update(run_attempt=2,conclusion='success')
+            cli.record_ci_run(p,client,control,run)
+            self.assertTrue(control.record_ci.call_args.args[3])
+            cli.record_ci_run(p,client,control,run)
+            self.assertEqual(control.record_ci.call_count,2)
+            self.assertEqual(set(values),{'ci-run:123:1','ci-run:123:2'})
+
+    def test_review_checks_exact_candidate_with_trusted_instructions_and_fails_closed(self):
+        p=cli.policy()
+        # A real repository/clone catches the original bug: the reviewer saw the
+        # controller HEAD and could not see files introduced by the candidate.
+        for mode in ('local', 'fetch', 'missing', 'mismatch'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                remote=Path(directory)/'remote';remote.mkdir()
+                def git(args, cwd):
+                    return cli.git(args,cwd)
+                git(['init'],remote)
+                git(['config','user.name','Fixture'],remote)
+                git(['config','user.email','fixture@example.test'],remote)
+                (remote/'agents/roles').mkdir(parents=True)
+                (remote/'agents/roles/qa.md').write_text('TRUSTED_REVIEW_ROLE')
+                git(['add','.'],remote);git(['commit','-m','trusted baseline'],remote)
+                root=Path(directory)/'controller'
+                git(['clone','--no-hardlinks',str(remote),str(root)],Path(directory))
+                baseline=git(['rev-parse','HEAD'],root)
+                (remote/'candidate.txt').write_text('candidate evidence')
+                (remote/'agents/roles/qa.md').write_text('UNTRUSTED_CANDIDATE_ROLE')
+                git(['add','.'],remote);git(['commit','-m','candidate'],remote)
+                target=git(['rev-parse','HEAD'],remote)
+                if mode=='local':git(['fetch',str(remote),target],root)
+                control=MagicMock()
+                control.snapshot.return_value={'releases':[{'plan_approved_hash':'approved'}]}
+                item={'status':'SUBMITTED','head_sha':target,'scope':{'allowed_paths':['candidate.txt']}}
+                args=argparse.Namespace(role='review',task_id='R:story:S',revision=target)
+                values={'queue:review:R:story:S':{'revision':target,'diff':'authenticated candidate diff'}}
+                def kv(key,value=None,write=False):
+                    if write:values[key]=value
+                    return values.get(key)
+                real_git=cli.git
+                def controller_git(arguments,cwd,**kwargs):
+                    if arguments[0]=='fetch' and arguments[1].startswith('https://'):
+                        if mode=='missing':raise RuntimeError('Candidate unavailable')
+                        arguments=['fetch',str(remote),arguments[2]]
+                    if mode=='mismatch' and arguments==['rev-parse','HEAD'] and Path(cwd)!=root:
+                        return baseline
+                    return real_git(arguments,cwd,**kwargs)
+                report={'summary':'Fixture review','verdict':'APPROVE','findings':[],'evidence':[],'limitations':[]}
+                def review(home,role,provider,prompt,**kwargs):
+                    self.assertEqual(real_git(['rev-parse','HEAD'],home),target)
+                    self.assertEqual((home/'candidate.txt').read_text(),'candidate evidence')
+                    self.assertIn('TRUSTED_REVIEW_ROLE',prompt)
+                    self.assertNotIn('UNTRUSTED_CANDIDATE_ROLE',prompt)
+                    self.assertIn('authenticated candidate diff',prompt)
+                    self.assertIn(target,prompt)
+                    self.assertEqual(role,'review')
+                    return report
+                with patch.object(cli,'ROOT',root), patch.object(cli,'ledger',return_value=control), \
+                     patch.object(cli,'find_item',return_value=('R','story','S',item)), \
+                     patch.object(cli,'current_plan',return_value=({'document':{}},'approved')), \
+                     patch.object(cli,'kv',side_effect=kv), patch.object(cli,'git',side_effect=controller_git), \
+                     patch.object(cli,'output',side_effect=lambda name,value:value), \
+                     patch.object(DockerAgent,'run',side_effect=review) as agent:
+                    if mode in {'missing','mismatch'}:
+                        with self.assertRaisesRegex((RuntimeError,ValueError),'Candidate unavailable|exact target revision'):
+                            cli.worker(p,args)
+                        agent.assert_not_called()
+                    else:
+                        result=cli.worker(p,args)
+                        self.assertEqual(result['revision'],target)
+                        self.assertEqual(result['changed_paths'],[])
+                        agent.assert_called_once()
+                self.assertEqual(real_git(['rev-parse','HEAD'],root),baseline)
+
     def test_credentials_never_reach_provider_subprocess(self):
         env=sanitized_environment('codex',{'PATH':'/bin','OPENAI_API_KEY':'test-only','GH_TOKEN':'never-copy','GITHUB_TOKEN':'never-copy','SDLC_STATE_SIGNING_KEY':'never-copy','AWS_SECRET_ACCESS_KEY':'never-copy'})
         self.assertEqual(set(env),{'PATH','OPENAI_API_KEY'})
