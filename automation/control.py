@@ -293,6 +293,17 @@ class Control:
             self._event(db, release_id, "plan_approved", actor, {"plan_hash": plan_hash})
             return self._decoded(self._release(db, release_id))
 
+    def request_plan_revision(self, release_id, feedback, actor):
+        self._founder(actor)
+        _require(isinstance(feedback,str) and feedback.strip(), "feedback_required", "Describe the requested plan changes.")
+        with self._tx() as db:
+            self._release(db,release_id,True)
+            _require(not db.execute("SELECT 1 FROM items WHERE release_id=? AND attempts>0",(release_id,)).fetchone(), "implementation_started", "Started releases need an explicit amendment plan; do not discard their work.")
+            self._invalidate(db,release_id,"DRAFT",plan=True)
+            db.execute("DELETE FROM items WHERE release_id=?",(release_id,))
+            self._event(db,release_id,"plan_revision_requested",actor,{"feedback":feedback})
+            return self._decoded(self._release(db,release_id))
+
     def _lease_seconds(self, value):
         _require(type(value) in (int, float) and 0 < value <= self.max_lease_seconds, "invalid_lease", "Lease duration exceeds its configured bound.")
         return float(value)

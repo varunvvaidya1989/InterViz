@@ -18,6 +18,8 @@ The founder supplies direction and release scope. The lead prepares stories, UX,
 1. Open the **Founder plan** issue form and describe the release outcome, included/excluded work and milestone. Add/retain `sdlc:plan`.
 2. The lead proposes `docs/releases/R-<issue-number>/plan.json` and related UX/architecture/operations documents in a PR. Review these first. The controller posts the exact approval command.
 3. Approve with `/sdlc approve-plan RELEASE PLAN_HASH`. Editing stories, the specification or policy invalidates it.
+
+   Before implementation begins, request changes with `/sdlc revise-plan RELEASE describe the changes`. This withdraws the previous approval and sends your feedback and previous plan to the lead. Started releases require an explicit amendment, preserving their existing work. Repeated unsuccessful planning attempts escalate rather than looping indefinitely.
 4. Follow linked PRs, checks, bounded review comments and bug tickets. Protected controller/policy changes require separate founder acceptance; they cannot authorise their own automatic merge.
 5. After actual staging QA passes, run **SDLC - Founder release**, phase `candidate`, with release ID and exact integrated commit. Review its candidate manifest and changelog.
 6. Approve with `/sdlc approve-release RELEASE COMMIT MANIFEST_HASH`.

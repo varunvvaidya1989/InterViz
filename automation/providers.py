@@ -115,7 +115,10 @@ class DockerAgent:
             command=self.command(workspace,role,provider,model,max_turns,budget_usd)
             preflight=command[:command.index(self.image)+1]+["codex","sandbox","--","/usr/bin/true"]
             check=self.runner(preflight,input="",text=True,encoding="utf-8",capture_output=True,timeout=30,env={k:v for k,v in env.items() if not k.endswith("API_KEY")},check=False)
-            if check.returncode:raise RuntimeError("Container cannot enforce the nested Codex sandbox; no paid model task was started.")
+            if check.returncode:
+                diagnostic=(check.stdout+check.stderr).lower()
+                category=next((label for pattern,label in [("no permissions to create a new namespace","host namespace permissions"),("operation not permitted","host kernel/AppArmor permissions"),("permission denied","workspace permissions"),("does not exist","missing runtime path")] if pattern in diagnostic),"sandbox startup")
+                raise RuntimeError("Container cannot enforce the nested Codex sandbox ("+category+"); no paid model task was started.")
         key = "OPENAI_API_KEY" if provider == "codex" else "ANTHROPIC_API_KEY"
         if not env.get(key): raise ValueError(f"Set {key} in the worker environment; never put it in a prompt.")
         if provider == "codex": env["CODEX_API_KEY"] = env.pop("OPENAI_API_KEY")

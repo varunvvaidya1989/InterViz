@@ -136,6 +136,14 @@ def current_plan(p,release_id):
     return manifest,actual
 
 
+def revise_plan(control,release_id,feedback,actor):
+    result=control.request_plan_revision(release_id,feedback,actor)
+    kv("previous-plan:"+release_id,kv("plan:"+release_id),True)
+    kv("plan:"+release_id,None,True)
+    kv("plan-feedback:"+release_id,feedback,True)
+    return result
+
+
 def pr_files(client,pr,item,p):
     files=client.pages(client.root+f"/pulls/{pr['number']}/files")
     if len(files)!=pr.get("changed_files",len(files)):raise ValueError("Incomplete PR file evidence.")
@@ -200,6 +208,7 @@ def event(p,args):
         words=text.strip().split();command=words[1]
         if actor not in p["founders"]["usernames"]:raise ValueError("Only configured founders issue release-plan/release approval commands.")
         if command=="plan" and len(words)==3:result=adopt_plan(p,control,ROOT/words[2],actor)
+        elif command=="revise-plan" and len(words)>=4:result=revise_plan(control,words[2]," ".join(words[3:]),actor)
         elif command=="approve-plan" and len(words)==4:
             manifest,actual=current_plan(p,words[2])
             if words[3]!=actual:raise ValueError("Approval does not match current plan/spec/policy hashes.")
@@ -208,7 +217,7 @@ def event(p,args):
             candidate=kv("candidate:"+words[2])
             if not candidate or words[4]!=digest(candidate) or candidate["commit_sha"]!=words[3]:raise ValueError("Candidate artifact/evidence hash does not match founder approval.")
             result=control.approve_release(words[2],words[3],actor);kv("release-manifest-approval:"+words[2],{"manifest_hash":words[4],"actor":actor},True)
-        else:raise ValueError("Commands: /sdlc plan PATH; /sdlc approve-plan RELEASE HASH; /sdlc approve-release RELEASE SHA MANIFEST_HASH")
+        else:raise ValueError("Commands: /sdlc plan PATH; /sdlc revise-plan RELEASE FEEDBACK; /sdlc approve-plan RELEASE HASH; /sdlc approve-release RELEASE SHA MANIFEST_HASH")
         kv(receipt,{"processed":True,"actor":actor},True);return result
     if name=="issues" and "sdlc:plan" in [l["name"] for l in data.get("issue",{}).get("labels",[])]:
         issue=data["issue"];release_id="R-"+str(issue["number"])
@@ -253,6 +262,7 @@ def worker(p,args):
     before=scan_files(home)
     feedback=[e["payload"] for e in control.events(release_id) if e["type"]=="review_recorded" and e["payload"].get("item_id")==item_id]
     assignment={"release_id":release_id,"item_id":item_id,"role":role,"scope":item["scope"],"target_revision":args.revision,"plan_hash":current_hash,"founder_approval":release.get("plan_approved_by"),"release_direction":release.get("metadata"),"approved_plan":manifest.get("document") if manifest else None,"review_feedback":feedback[-4:],"release_items":control.snapshot(release_id)["items"] if role=="qa" else None}
+    if planning:assignment.update(previous_plan=kv("previous-plan:"+release_id),founder_feedback=kv("plan-feedback:"+release_id))
     diff=""
     if role=="review":
         # Diff was fetched/authenticated by the controller, not supplied by model.
@@ -306,6 +316,7 @@ def publish_result(p,client,control):
         clean=ROOT/".sdlc/publish"/uuid.uuid4().hex;clean.parent.mkdir(parents=True,exist_ok=True)
         git(["clone","--no-hardlinks",str(ROOT),str(clean)],ROOT);git(["checkout","--detach",result["revision"]],clean)
         branch="agent/"+re.sub(r"[^A-Za-z0-9._-]","-",release_id+"-"+item_id)+"-"+str(item["attempts"])
+        if planning:branch+="-"+uuid.uuid4().hex[:8]
         git(["checkout","-b",branch],clean);publish_copy(home,clean,changed)
         git(["add","--",*changed],clean)
         git(["-c","user.name=Systems Labs Agent","-c","user.email=41898282+github-actions[bot]@users.noreply.github.com","commit","-m",f"feat({item_id}): {item['title'][:120]}"],clean)
@@ -329,6 +340,12 @@ def publish_result(p,client,control):
 
 def reconcile(p,args):
     client=github(p);principal(p,client);control=ledger(p);processed=publish_result(p,client,control)
+    existing={r["id"] for r in control.snapshot()["releases"]}
+    for issue in client.pages(client.root+"/issues?state=open&labels=sdlc%3Aplan"):
+        release_id="R-"+str(issue["number"])
+        if "pull_request" in issue or issue.get("user",{}).get("login") not in p["founders"]["usernames"] or release_id in existing:continue
+        control.create_release(release_id,issue["title"],issue["user"]["login"],{"issue":issue["number"],"direction":issue.get("body","")[:12000]})
+        existing.add(release_id)
     # Scheduled rescanning means GitHub concurrency coalescing loses no approval.
     for comment in client.pages(client.root+"/issues/comments"):
         if comment.get("user",{}).get("login") not in p["founders"]["usernames"] or not comment.get("body","").startswith("/sdlc "):continue
@@ -338,6 +355,7 @@ def reconcile(p,args):
         words=comment["body"].strip().split();actor=comment["user"]["login"]
         try:
             if words[1]=="plan" and len(words)==3:adopt_plan(p,control,ROOT/words[2],actor)
+            elif words[1]=="revise-plan" and len(words)>=4:revise_plan(control,words[2]," ".join(words[3:]),actor)
             elif words[1]=="approve-plan" and len(words)==4:
                 manifest,actual=current_plan(p,words[2])
                 if actual!=words[3]:continue

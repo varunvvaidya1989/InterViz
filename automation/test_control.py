@@ -66,6 +66,20 @@ class LedgerTests(unittest.TestCase):
         self.approved("e"*64)
         self.assertEqual(self.control.snapshot("R1")["releases"][0]["plan_approved_by"], "founder")
 
+    def test_founder_can_request_revision_before_implementation(self):
+        self.approved()
+        self.assertCode("founder_required",self.control.request_plan_revision,"R1","Change scope","lead")
+        self.control.request_plan_revision("R1","Change scope","founder")
+        snapshot=self.control.snapshot("R1")
+        self.assertEqual(snapshot["releases"][0]["state"],"DRAFT")
+        self.assertIsNone(snapshot["releases"][0]["plan_approved_hash"])
+        self.assertEqual(snapshot["items"],[])
+        self.assertTrue(self.control.verify_audit()["valid"])
+
+    def test_plan_revision_never_discards_started_work(self):
+        self.approved();self.control.claim("R1","S1","coder")
+        self.assertCode("implementation_started",self.control.request_plan_revision,"R1","Change scope","founder")
+
     def test_no_default_founder_and_duplicate_create_is_idempotent(self):
         before = len(self.control.events())
         self.control.create_release("R1", "Infrastructure release", "lead")
