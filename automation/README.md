@@ -33,6 +33,8 @@ The founder is `varunvvaidya1989`; the selected provider is Codex. `OPENAI_API_K
 
 Repository variables: `SDLC_ENABLED`, `SDLC_TRUSTED_ACTORS` (JSON array), `SDLC_FOUNDER_LOGIN`. `infra/bootstrap_github.py --configure` verifies the existing authenticated account and configures these plus the signing secret. It never rotates an existing signing key silently.
 
+After bootstrap CI passes, `python infra/bootstrap_github.py --protect` installs the main-branch CI/review requirements. GitHub's combined bot PR creation/approval setting is enabled to permit worker PRs; the controller uses independent execution identities and check runs rather than bot self-approval. Founder administrators retain an emergency override. Checks target each proposed head; integrated staging QA verifies the combined result before release.
+
 Application checks and real staging/production targets are intentionally unconfigured because the new SaaS is not implemented. The M1 implementation must add real checks and deployment evidence. The earlier prototype's tests cannot stand in for SaaS acceptance.
 
 The initial GitHub controller serialises ledger-mutating jobs; it is not a high-throughput parallel task server. Scheduled rescanning recovers event pulses that Actions concurrency may coalesce. Larger workloads can later move leases/state to a dedicated transactional control-plane service.

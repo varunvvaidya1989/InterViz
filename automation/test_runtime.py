@@ -30,6 +30,19 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn('CODEX_API_KEY',command)
         self.assertIn('--interactive',command)
 
+    def test_sandbox_failure_precedes_paid_model_call_and_receives_no_key(self):
+        calls=[]
+        def runner(command,**kwargs):
+            calls.append((command,kwargs))
+            return subprocess.CompletedProcess(command,1,'','No permissions to create a new namespace')
+        with tempfile.TemporaryDirectory() as directory,patch.dict(os.environ,{'OPENAI_API_KEY':'fixture-never-real','GH_TOKEN':'fixture-controller-only'}):
+            with self.assertRaisesRegex(RuntimeError,'no paid model task'):
+                DockerAgent(runner=runner).run(directory,'coding','codex','fixture')
+        self.assertEqual(len(calls),1)
+        self.assertNotIn('OPENAI_API_KEY',calls[0][1]['env'])
+        self.assertNotIn('CODEX_API_KEY',calls[0][1]['env'])
+        self.assertNotIn('GH_TOKEN',calls[0][1]['env'])
+
     def test_path_scope_protected_paths_and_traversal(self):
         check_changed_paths(['apps/web/a.ts'],['apps/web/'])
         for path in ['../outside','C:/secret','/etc/passwd','.git/config','packages/other.ts']:

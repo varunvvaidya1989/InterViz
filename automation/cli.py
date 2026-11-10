@@ -403,6 +403,7 @@ def reconcile(p,args):
             if not kv("reviewed:"+release["id"]+":"+item["kind"]+":"+item["id"]+":"+item["head_sha"]) and (not queued or queued.get("revision")!=item["head_sha"] or queued.get("time",0)<time.time()-1800):
                 if any("patch" not in f for f in files):raise ValueError("Review diff is incomplete/binary/oversized; manual review required.")
                 diff="\n".join(f"FILE: {f['filename']}\n{f.get('patch','[binary/large patch omitted]')}" for f in files)
+                if len(diff)>180000:raise ValueError("Review diff exceeds the complete-review limit; split the work item.")
                 kv(key,{"revision":item["head_sha"],"time":time.time(),"diff":diff},True)
                 client.dispatch("agent-control.yml",{"action":"worker","role":"review","task-id":f"{release['id']}:{item['kind']}:{item['id']}","revision":item["head_sha"]});scheduled.append(key)
             if not kv("ci-queued:"+item["head_sha"]):

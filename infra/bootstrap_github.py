@@ -54,15 +54,29 @@ def configure(client,token,gh):
             if getattr(error,"status",None)!=404:raise
             client.request("POST",client.root+"/actions/variables",{"name":name,"value":value})
     client.request("PUT",client.root+"/environments/founder-release",{})
+    client.request("PUT",client.root+"/actions/permissions/workflow",{"default_workflow_permissions":"read","can_approve_pull_request_reviews":True})
+    labels={row["name"] for row in client.pages(client.root+"/labels")}
+    for name,color in [("sdlc:plan","7057ff"),("sdlc:story","0075ca"),("sdlc:bug","d73a4a"),("sdlc:release-candidate","0e8a16")]:
+        if name not in labels:client.request("POST",client.root+"/labels",{"name":name,"color":color})
     print(json.dumps({"repository":repo["full_name"],"founder":me["login"],"controller_events_enabled":True,"worker_authority":"automation/policy.json and founder-approved release plans","openai_secret_present":"OPENAI_API_KEY" in names,"secret_values_disclosed":False},indent=2))
 
 
+def protect(client):
+    branch=client.info()["default_branch"]
+    client.request("PUT",client.root+"/branches/"+branch+"/protection",{
+        "required_status_checks":{"strict":False,"checks":[{"context":"sdlc-infrastructure-ci","app_id":15368},{"context":"sdlc-independent-review","app_id":15368}]},
+        "enforce_admins":False,"required_pull_request_reviews":{"dismiss_stale_reviews":True,"require_code_owner_reviews":False,"required_approving_review_count":0},
+        "restrictions":None,"required_conversation_resolution":True,"allow_force_pushes":False,"allow_deletions":False})
+    print("Protected "+branch+" with CI, independent review, resolved conversations and force-push/deletion restrictions. Founder administrators retain emergency override.")
+
+
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument("--repository",default="varunvvaidya1989/InterViz");p.add_argument("--download-only",action="store_true");p.add_argument("--configure",action="store_true");args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument("--repository",default="varunvvaidya1989/InterViz");p.add_argument("--download-only",action="store_true");p.add_argument("--configure",action="store_true");p.add_argument("--protect",action="store_true",help="Require the verified CI/review checks after bootstrap succeeds");args=p.parse_args()
     token=os.environ.get("GH_TOKEN") or local_git_credential()
     if not token:raise RuntimeError("Authenticate GitHub locally first; no credential is requested in chat.")
     client=GitHub(args.repository,token=token);gh=gh_binary(client)
     if args.configure:configure(client,token,gh)
+    if args.protect:protect(client)
     elif not args.download_only:print("Use --configure after local validation and the initial repository push.")
 
 
