@@ -1,0 +1,72 @@
+name: Founder plan
+description: Propose a bounded, versioned plan for founder review before agents implement it.
+title: '[Plan] '
+labels: ['sdlc:plan']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A plan proposal is not approval. The controller requires the configured founder's explicit approval of an exact plan revision before coding can start. Use INFRA for the automation harness; SaaS M1–M8 gates remain separate.
+  - type: input
+    id: plan-id
+    attributes:
+      label: Plan ID
+      placeholder: INFRA-001
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Milestone
+      options: [INFRA, M1, M2, M3, M4, M5, M6, M7, M8]
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Intended outcome
+      description: Describe the concrete reviewable result and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and allowed paths
+      description: Include files/modules owned by the work and explicit exclusions.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and evidence
+      placeholder: |
+        - Requirement:
+          Expected behaviour:
+          Verification:
+          Evidence artifact:
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and unresolved owner decisions
+      description: Link prerequisite plans, specification sections, and blocked decisions.
+  - type: textarea
+    id: risks
+    attributes:
+      label: Migration, release, and recovery implications
+      description: State when no migration/deployment is part of this plan.
+    validations:
+      required: true
+  - type: textarea
+    id: budgets
+    attributes:
+      label: Proposed execution bounds
+      description: Give review-cycle, time, token, and spending bounds; unresolved values must block a cost-bearing worker.
+  - type: checkboxes
+    id: proposal-only
+    attributes:
+      label: Proposal acknowledgement
+      options:
+        - label: This proposes a plan; it does not itself approve implementation, merge, staging, or release.
+          required: true

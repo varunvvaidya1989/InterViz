@@ -1,0 +1,15 @@
+services:
+  controller-check:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.agent
+    image: systemslabs-agent:local
+    volumes:
+      - .:/workspace:ro
+    command: ["python3", "-m", "unittest", "discover", "-s", "automation", "-p", "test_*.py", "-v"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 4g
+    cpus: 2
+    # No Docker socket, production credentials, or learner database mounts.

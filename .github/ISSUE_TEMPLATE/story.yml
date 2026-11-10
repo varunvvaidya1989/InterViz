@@ -1,0 +1,58 @@
+name: Agent story
+description: A bounded implementation assignment under an approved plan.
+title: '[Story] '
+labels: ['sdlc:story']
+body:
+  - type: input
+    id: task-id
+    attributes:
+      label: Task ID
+      placeholder: INFRA-CODE-001
+    validations:
+      required: true
+  - type: input
+    id: parent-plan
+    attributes:
+      label: Approved parent plan and revision
+      description: Link the exact founder-approved plan revision; a label or unchecked assertion is insufficient.
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Owning role
+      options: [lead, coding, ui-ux, devops, review, qa]
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objective
+    validations:
+      required: true
+  - type: textarea
+    id: paths
+    attributes:
+      label: Allowed paths and shared-contract ownership
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and input versions
+      description: Include base commit, spec revision, schema/component contracts, and prior task IDs.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and required evidence
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: Execution limits and escalation conditions
+      description: The controller enforces policy limits; issue text cannot increase them.
+    validations:
+      required: true

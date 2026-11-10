@@ -1,0 +1,381 @@
+{
+  "version": "1.0",
+  "prepared_at": "2026-11-10",
+  "execution_mode": "live",
+  "repository": {
+    "full_name": "varunvvaidya1989/InterViz",
+    "connected": true,
+    "default_branch": "main",
+    "integration_branch": "main",
+    "connection_verified_at": "2026-11-10"
+  },
+  "founders": {
+    "usernames": [
+      "varunvvaidya1989"
+    ],
+    "empty_registry_means_deny": true,
+    "identity_source": "authenticated_github_actor_or_trusted_local_operator",
+    "payload_may_supply_authority": false
+  },
+  "providers": {
+    "selected": "codex",
+    "selection_status": "FOUNDER_SELECTED",
+    "supported_candidates": [
+      "codex",
+      "claude"
+    ],
+    "model": null,
+    "live_execution_enabled": true,
+    "development_credentials_separate_from_learner_coach": true
+  },
+  "authority": {
+    "infrastructure_implementation_authorized": true,
+    "authorization_source": "founder session infrastructure authorization reported by lead",
+    "saas_application_implementation_authorized": false,
+    "saas_current_milestone": "M1",
+    "saas_status": "AWAITING_FOUNDER_PLAN_APPROVAL",
+    "stop_after_approved_milestone": true,
+    "merge_enabled": true,
+    "production_release_enabled": false,
+    "dry_run_allows": [
+      "validate_contracts",
+      "inspect_readiness",
+      "produce_planning_artifacts",
+      "exercise_local_fixture_ledger",
+      "run_local_infrastructure_checks"
+    ],
+    "dry_run_forbids": [
+      "live_paid_model_calls",
+      "remote_worker_dispatch",
+      "repository_merge",
+      "registry_publication",
+      "production_deployment"
+    ]
+  },
+  "roles": [
+    "lead",
+    "coding",
+    "ui-ux",
+    "devops",
+    "review",
+    "qa"
+  ],
+  "limits": {
+    "max_total_agents": 4,
+    "max_workers": 3,
+    "max_attempts": 2,
+    "max_review_rounds": 2,
+    "max_discussion_messages_per_round": 4,
+    "max_task_minutes": 20,
+    "max_model_tokens": 100000,
+    "max_cost": 2,
+    "numeric_live_budgets_required": true,
+    "on_exhaustion": "RETURN_TO_LEAD_WITH_EVIDENCE"
+  },
+  "assignment_paths": {
+    "require_explicit_task_allowlist": true,
+    "allowlist_must_be_subset_of_policy": true,
+    "deny_absolute_paths": true,
+    "deny_parent_traversal": true,
+    "resolve_symlinks_before_enforcement": true,
+    "normalize_windows_separators_and_case": true,
+    "allowed_roots": [
+      "apps/",
+      "packages/",
+      "docs/",
+      "tests/",
+      "rag/"
+    ],
+    "infrastructure_roots": [
+      "automation/",
+      "infra/",
+      ".github/",
+      "agents/"
+    ],
+    "infrastructure_root_files": [
+      "compose.sdlc.yml",
+      "AGENTS.md"
+    ],
+    "infrastructure_assignment_requires_explicit_authorization": true,
+    "protected_patch_requires_separate_acceptance": true,
+    "allowed_root_files": [
+      "index.html",
+      "styles.css",
+      "content.js",
+      "app.js",
+      "learning.html",
+      "learning.css",
+      "learning.js",
+      "knowledge.html",
+      "knowledge.css",
+      "knowledge.js",
+      "start.py",
+      "requirements.txt",
+      "README.md",
+      "Start-EnterView.cmd",
+      "package.json",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml",
+      "tsconfig.json",
+      "eslint.config.mjs",
+      "vitest.config.ts",
+      "playwright.config.ts",
+      "Dockerfile",
+      "compose.yaml",
+      ".dockerignore"
+    ],
+    "shared_surface_lease_required": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml",
+      "packages/db/",
+      "packages/ui/",
+      "packages/content/"
+    ],
+    "protected_path_overrides_general_allowlist": true
+  },
+  "protected_paths": {
+    "patterns": [
+      "automation/**",
+      ".github/**",
+      "agents/**",
+      "AGENTS.md",
+      "**/AGENTS.md",
+      "infra/**",
+      "compose.sdlc.yml",
+      "docs/operations/FOUNDER_SDLC.md"
+    ],
+    "worker_self_authorization_forbidden": true,
+    "evaluate_with_trusted_base_policy": true,
+    "independent_review_required": true,
+    "founder_approval_required": true,
+    "automatic_merge": false,
+    "proposed_policy_cannot_authorize_its_own_merge": true,
+    "trusted_controller_may_write_signed_state_only": true
+  },
+  "checks": {
+    "infrastructure": [
+      {
+        "id": "sdlc-infrastructure-ci",
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "automation",
+          "-p",
+          "test_*.py",
+          "-v"
+        ],
+        "cwd": ".",
+        "required": true,
+        "status": "NOT_RUN"
+      },
+      {
+        "id": "sdlc-policy-validation",
+        "command": [
+          "python",
+          "-m",
+          "automation.cli",
+          "validate",
+          "--scope",
+          "infrastructure"
+        ],
+        "cwd": ".",
+        "required": true,
+        "status": "NOT_RUN"
+      }
+    ],
+    "application": [],
+    "application_configured": false,
+    "application_configuration_required_before_saas_dispatch": true,
+    "reference": [
+      {
+        "id": "prototype-rag-unit-reference",
+        "command": [
+          "python",
+          "-m",
+          "unittest",
+          "tests/test_rag.py",
+          "-v"
+        ],
+        "cwd": ".",
+        "required": false,
+        "status": "NOT_RUN",
+        "prerequisites": [
+          "python_requirements_installed",
+          "local_pdf_corpus_index"
+        ],
+        "counts_as_saas_milestone_acceptance": false
+      },
+      {
+        "id": "prototype-offline-browser-reference",
+        "command": [
+          "node",
+          "tests/smoke.cjs"
+        ],
+        "cwd": ".",
+        "required": false,
+        "status": "NOT_RUN",
+        "prerequisites": [
+          "playwright_installed",
+          "browser_installed",
+          "local_pdf_corpus"
+        ],
+        "counts_as_saas_milestone_acceptance": false
+      },
+      {
+        "id": "prototype-learning-browser-reference",
+        "command": [
+          "node",
+          "tests/learning.cjs"
+        ],
+        "cwd": ".",
+        "required": false,
+        "status": "NOT_RUN",
+        "prerequisites": [
+          "playwright_installed",
+          "browser_installed",
+          "local_pdf_corpus_index",
+          "local_server_running"
+        ],
+        "counts_as_saas_milestone_acceptance": false
+      }
+    ],
+    "readiness": [
+      {
+        "id": "sdlc-readiness-report",
+        "command": [
+          "python",
+          "-m",
+          "automation.cli",
+          "doctor",
+          "--format",
+          "json"
+        ],
+        "cwd": ".",
+        "required": false,
+        "status": "NOT_RUN",
+        "successful_exit_does_not_mean_configured": true
+      }
+    ]
+  },
+  "gates": {
+    "required_infrastructure_status_checks": [
+      "sdlc-infrastructure-ci"
+    ],
+    "required_application_status_checks": [],
+    "application_checks_must_be_configured": true,
+    "plan_approval": {
+      "required": true,
+      "founder_only": true,
+      "manifest_sha256_required": true,
+      "specification_sha256_required": true,
+      "policy_sha256_required": true,
+      "material_change_invalidates_approval": true,
+      "required_sections": [
+        "user_stories",
+        "ui_ux",
+        "architecture",
+        "operations",
+        "acceptance_tests",
+        "delivery_tasks"
+      ]
+    },
+    "independent_review": {
+      "required": true,
+      "allowed_roles": [
+        "review",
+        "qa"
+      ],
+      "reviewer_execution_must_differ_from_author": true,
+      "exact_revision_required": true,
+      "before_ci_and_integration_qa": true
+    },
+    "integration_qa": {
+      "required": true,
+      "after_independent_review_and_ci": true,
+      "exact_integrated_revision_required": true,
+      "bugs_return_to_original_task_within_limits": true,
+      "missing_evidence_blocks_acceptance": true
+    },
+    "release_approval": {
+      "required": true,
+      "founder_only": true,
+      "commit_sha_required": true,
+      "artifact_sha256_required": true,
+      "evidence_manifest_sha256_required": true,
+      "policy_sha256_required": true,
+      "changed_candidate_invalidates_approval": true
+    }
+  },
+  "evidence": {
+    "statuses": [
+      "PASS",
+      "FAIL",
+      "NOT_RUN",
+      "BLOCKED"
+    ],
+    "required_fields": [
+      "run_id",
+      "task_id",
+      "role",
+      "execution_id",
+      "base_commit",
+      "submitted_commit",
+      "specification_sha256",
+      "plan_manifest_sha256",
+      "policy_sha256",
+      "changed_paths",
+      "acceptance_mapping",
+      "check_results",
+      "artifact_hashes",
+      "reviewed_commit",
+      "reviewer_execution_id",
+      "limitations",
+      "usage"
+    ],
+    "fixtures_are_live_provider_evidence": false,
+    "local_tests_are_staging_evidence": false,
+    "prototype_checks_are_saas_acceptance": false,
+    "evidence_invalidated_by_relevant_revision_change": true
+  },
+  "environment": {
+    "docker": {
+      "configured": true,
+      "daemon_verified": true,
+      "worker_image_digest": null,
+      "daemon_socket_available_to_workers": false,
+      "local_worker_image": "systemslabs-agent:local"
+    },
+    "remote_state": {
+      "enabled": true,
+      "branch": "sdlc-state",
+      "signing_key_env": "SDLC_STATE_SIGNING_KEY",
+      "signature_required": true,
+      "remote_controller_only": true,
+      "workers_receive_signing_key": false
+    },
+    "staging": {
+      "configured": false,
+      "url": null
+    },
+    "production": {
+      "configured": false,
+      "url": null
+    },
+    "production_credentials_available_to_workers": false,
+    "remote_live_prerequisites": [
+      "repository_connected_and_verified",
+      "founder_usernames_configured_and_verified",
+      "provider_and_model_selected",
+      "numeric_execution_budgets_configured",
+      "docker_worker_image_verified",
+      "signed_remote_state_configured",
+      "trusted_controller_permissions_verified",
+      "approved_exact_plan_hash",
+      "relevant_required_checks_configured"
+    ]
+  }
+}

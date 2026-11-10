@@ -1,0 +1,84 @@
+name: SDLC - Founder release
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Candidate assembles evidence; publish requires exact-candidate founder approval in the ledger
+        type: choice
+        options: [candidate, publish]
+        default: candidate
+        required: true
+      candidate-id:
+        description: Stable release-candidate ID
+        type: string
+        required: true
+      revision:
+        description: Exact 40-character integrated commit approved for this candidate
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: sdlc-ledger
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      vars.SDLC_ENABLED == 'true' &&
+      github.actor == vars.SDLC_FOUNDER_LOGIN &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: founder-release
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+      actions: read
+      checks: read
+    env:
+      SDLC_RELEASE_PHASE: ${{ inputs.phase }}
+      SDLC_CANDIDATE_ID: ${{ inputs.candidate-id }}
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+      SDLC_OUTPUT_DIR: .sdlc/output
+    steps:
+      - name: Check out trusted release controller only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Restore signed ledger
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action restore
+      - name: Verify founder, exact candidate, CI/review/QA and publish policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python -m automation.cli release
+          --phase "$SDLC_RELEASE_PHASE"
+          --candidate-id "$SDLC_CANDIDATE_ID"
+          --revision "$SDLC_TARGET_REVISION"
+      - name: Save signed release ledger
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action save
+      - name: Retain release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdlc-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .sdlc/output/
+          if-no-files-found: ignore
+          retention-days: 14

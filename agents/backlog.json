@@ -1,0 +1,2450 @@
+{
+  "version": "1.0",
+  "prepared_at": "2026-11-10",
+  "mode": "planning_only",
+  "spec_sha256": "31afbaa2528e21e984332d86629d493d7b4d6aaec38853c6fcb796714a581017",
+  "source_of_truth": "planning/Systems Labs Product Specification.md",
+  "task_schema": "agents/task.schema.json",
+  "note": "Every task is PLANNED. The host lead must obtain required milestone approval, allocate exclusive files and populate execution limits before dispatch. Later milestones cannot start until predecessor acceptance.",
+  "tasks": [
+    {
+      "id": "M1-LEAD-001",
+      "milestone": "M1",
+      "role": "lead",
+      "title": "Confirm approved M1 plan and contracts",
+      "status": "PLANNED",
+      "depends_on": [],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-004"
+      ],
+      "allowed_paths": [
+        "docs/plans/M1.md",
+        "docs/decisions.md",
+        "agents/"
+      ],
+      "acceptance": [
+        "Record owner approval tied to plan/spec versions before application implementation.",
+        "Assign exact file ownership and resolve technical choices without inventing product decisions."
+      ],
+      "deliverables": [
+        "Approved plan and task leases",
+        "Architecture/interface decisions"
+      ],
+      "required_evidence": [
+        "Owner approval record",
+        "Dependency/path ownership review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-OPS-001",
+      "milestone": "M1",
+      "role": "devops",
+      "title": "Establish Git/workspaces/toolchain and CI baseline",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-LEAD-001"
+      ],
+      "requirements": [
+        "FND-001",
+        "NFR-001",
+        "NFR-004",
+        "NFR-005"
+      ],
+      "allowed_paths": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "apps/",
+        "packages/",
+        "infra/",
+        "docker-compose.yml",
+        ".github/",
+        "agents/runs/",
+        ".env.example",
+        ".gitignore",
+        ".npmrc",
+        ".node-version",
+        "tsconfig.json",
+        "eslint.config.mjs",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "acceptance": [
+        "Preserve prototype, establish baseline and pin a reproducible compatible toolchain.",
+        "CI has real build/lint/types/unit/E2E checks with isolated services; managed-session records are resumable artifacts, not a claimed autonomous runner."
+      ],
+      "deliverables": [
+        "Workspace scaffold",
+        "CI/local service configuration",
+        "Baseline commit and run records"
+      ],
+      "required_evidence": [
+        "Clean install/build logs",
+        "CI execution",
+        "Migration/backup design"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-UX-001",
+      "milestone": "M1",
+      "role": "ui-ux",
+      "title": "Specify themes, translation/state system and foundation flows",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-LEAD-001"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "NFR-002",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "docs/design/",
+        "packages/ui/tokens/"
+      ],
+      "acceptance": [
+        "Design light/dark, responsive auth/onboarding/dashboard plus loading/empty/error and keyboard states.",
+        "List English translation keys and <60-second skippable onboarding test."
+      ],
+      "deliverables": [
+        "Interaction/state specifications",
+        "Token contract"
+      ],
+      "required_evidence": [
+        "Designer review checklist",
+        "Desktop/phone flow evidence specification"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-CODE-001",
+      "milestone": "M1",
+      "role": "coding",
+      "title": "Implement database/auth service and API foundations",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-OPS-001",
+        "M1-UX-001"
+      ],
+      "requirements": [
+        "FND-003",
+        "FND-004",
+        "NFR-001",
+        "NFR-003",
+        "NFR-004",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "apps/web/src/server/",
+        "apps/web/src/app/api/v1/"
+      ],
+      "acceptance": [
+        "Migrations/auth-library adapter/profile/audit/session ownership and typed validation work.",
+        "Verification/reset/revocation/rate-limit and request-log foundations reject unsafe/unauthorised cases.",
+        "Record ASVS level 2 control mapping and implement signup bot/rate-limit foundations with privacy-aware account-sharing telemetry boundaries."
+      ],
+      "deliverables": [
+        "Migrations and identity service",
+        "Typed route/error contracts"
+      ],
+      "required_evidence": [
+        "Database integration tests",
+        "Auth/security negative tests",
+        "Redaction checks"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-CODE-002",
+      "milestone": "M1",
+      "role": "coding",
+      "title": "Build translated accessible auth and shared UI",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-UX-001",
+        "M1-CODE-001"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-003",
+        "NFR-002",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "packages/ui/",
+        "packages/i18n/",
+        "apps/web/src/app/(auth)/",
+        "apps/web/src/components/"
+      ],
+      "acceptance": [
+        "Email/password verification/reset and Google/GitHub UI/integration have explicit failure paths.",
+        "Themes/translations/focus/mobile states satisfy the approved design."
+      ],
+      "deliverables": [
+        "Auth screens and shared components",
+        "English catalogues"
+      ],
+      "required_evidence": [
+        "Auth E2E/browser evidence",
+        "Keyboard/theme checks",
+        "Separate fixture/live-provider labels"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-CODE-003",
+      "milestone": "M1",
+      "role": "coding",
+      "title": "Implement onboarding, profile and empty dashboard",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-CODE-002"
+      ],
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "NFR-003",
+        "NFR-004",
+        "NFR-007",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app/(learner)/",
+        "apps/web/src/app/api/v1/profile/",
+        "apps/web/src/app/api/v1/onboarding/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "Background/level/goal/date save, skip, edit and restore through authorised APIs.",
+        "Dashboard uses distinct access/completion/mastery empty states; events and translated error/loading states are present."
+      ],
+      "deliverables": [
+        "Profile/onboarding/dashboard",
+        "Event instrumentation"
+      ],
+      "required_evidence": [
+        "Signup-to-dashboard E2E",
+        "Cross-user/skip/update tests",
+        "Usability timing and continuation check"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-OPS-002",
+      "milestone": "M1",
+      "role": "devops",
+      "title": "Prepare staged build, privacy, health and recovery evidence",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-CODE-003"
+      ],
+      "requirements": [
+        "FND-001",
+        "NFR-001",
+        "NFR-003",
+        "NFR-004",
+        "NFR-005"
+      ],
+      "allowed_paths": [
+        "infra/",
+        "docker-compose.yml",
+        ".github/",
+        "docs/operations/"
+      ],
+      "acceptance": [
+        "Deploy the identifiable integrated revision to isolated staging when prerequisites exist.",
+        "Prove health/migration/restore and secret/redaction controls; unavailable external evidence remains outstanding."
+      ],
+      "deliverables": [
+        "Staging runbook/identity",
+        "Restore and privacy procedures"
+      ],
+      "required_evidence": [
+        "Staging health/migration logs",
+        "Restore demonstration",
+        "Secret/config inventory"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-QA-001",
+      "milestone": "M1",
+      "role": "qa",
+      "title": "Independently verify all M1 acceptance and definition of done",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-OPS-002"
+      ],
+      "requirements": [
+        "GOV-003",
+        "FND-001",
+        "FND-002",
+        "FND-003",
+        "FND-004",
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "NFR-001",
+        "NFR-002",
+        "NFR-003",
+        "NFR-004",
+        "NFR-005",
+        "NFR-007",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M1/",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Review exact integrated commit, all auth negative/ownership cases and foundation journey.",
+        "Map unit/E2E/a11y/staging evidence; do not waive missing live/staging checks."
+      ],
+      "deliverables": [
+        "Requirement-to-evidence verdict",
+        "Reproducible defects"
+      ],
+      "required_evidence": [
+        "Independent review report",
+        "Phone/desktop staging evidence",
+        "ASVS control mapping and signup anti-abuse evidence"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M1-LEAD-002",
+      "milestone": "M1",
+      "role": "lead",
+      "title": "Accept M1, update changelog, stop and report",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "docs/reviews/M1/",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Accept only verified criteria on the integrated revision.",
+        "Update changelog and stop/report without starting M2."
+      ],
+      "deliverables": [
+        "Milestone acceptance/report"
+      ],
+      "required_evidence": [
+        "QA verdict",
+        "Recorded acceptance and stop"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M1_OWNER_APPROVAL"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-LEAD-001",
+      "milestone": "M2",
+      "role": "lead",
+      "title": "Define trace, logical operation, prediction and renderer contracts",
+      "status": "PLANNED",
+      "depends_on": [
+        "M1-LEAD-002"
+      ],
+      "requirements": [
+        "VIZ-001",
+        "VIZ-003",
+        "VIZ-004",
+        "VIZ-006"
+      ],
+      "allowed_paths": [
+        "docs/plans/M2.md",
+        "docs/decisions.md",
+        "docs/contracts/"
+      ],
+      "acceptance": [
+        "Versioned snapshots, per-language mappings and server prediction boundaries are specified.",
+        "All six renderer families and invalid/custom input bounds are covered."
+      ],
+      "deliverables": [
+        "M2 plan",
+        "Trace/renderer/API contracts"
+      ],
+      "required_evidence": [
+        "Contract review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-UX-001",
+      "milestone": "M2",
+      "role": "ui-ux",
+      "title": "Design synchronized panels, playback and prediction states",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-LEAD-001"
+      ],
+      "requirements": [
+        "VIZ-004",
+        "VIZ-005",
+        "VIZ-006",
+        "VIZ-007",
+        "NFR-002"
+      ],
+      "allowed_paths": [
+        "docs/design/M2/"
+      ],
+      "acceptance": [
+        "Storyboards preserve step index and pending prediction across language/screen changes.",
+        "Keyboard/reduced-motion/error and stacked-phone layouts are defined."
+      ],
+      "deliverables": [
+        "Visualizer interaction spec"
+      ],
+      "required_evidence": [
+        "UX acceptance checklist"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-CODE-001",
+      "milestone": "M2",
+      "role": "coding",
+      "title": "Implement tested trace generators for five algorithms",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-LEAD-001"
+      ],
+      "requirements": [
+        "VIZ-001",
+        "VIZ-002",
+        "VIZ-004"
+      ],
+      "allowed_paths": [
+        "packages/algos/",
+        "packages/viz/schema/",
+        "packages/content/code/"
+      ],
+      "acceptance": [
+        "All five final states and stable-step fixtures pass boundary tests.",
+        "Pseudocode/Python/JavaScript/Java mappings agree on logical operations."
+      ],
+      "deliverables": [
+        "Reference generators",
+        "Code mapping fixtures"
+      ],
+      "required_evidence": [
+        "Reference/trace unit tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-CODE-002",
+      "milestone": "M2",
+      "role": "coding",
+      "title": "Implement pure snapshot renderers",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-UX-001",
+        "M2-CODE-001"
+      ],
+      "requirements": [
+        "VIZ-003",
+        "VIZ-007",
+        "NFR-002"
+      ],
+      "allowed_paths": [
+        "packages/viz/renderers/",
+        "packages/ui/"
+      ],
+      "acceptance": [
+        "Arrays, linked nodes, trees, graphs, tables and call stacks consume snapshots without algorithm logic.",
+        "Synthetic state fixtures cover renderers not yet exercised by a reference algorithm."
+      ],
+      "deliverables": [
+        "Renderer components/story fixtures"
+      ],
+      "required_evidence": [
+        "Renderer/a11y tests",
+        "Text-state alternatives"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-CODE-003",
+      "milestone": "M2",
+      "role": "coding",
+      "title": "Implement synchronized trace player and input editors",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-CODE-002"
+      ],
+      "requirements": [
+        "VIZ-004",
+        "VIZ-005",
+        "VIZ-007"
+      ],
+      "allowed_paths": [
+        "packages/viz/player/",
+        "apps/web/src/app/visualize/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "Playback/back/scrub/start/three speeds and arrows/space reproduce state exactly.",
+        "Language switches retain operation; custom array/target/graph/start node validation works."
+      ],
+      "deliverables": [
+        "Player/editor UI"
+      ],
+      "required_evidence": [
+        "Player E2E",
+        "Long-trace/step latency evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-CODE-004",
+      "milestone": "M2",
+      "role": "coding",
+      "title": "Implement server-backed prediction checkpoints",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-CODE-003"
+      ],
+      "requirements": [
+        "VIZ-006",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app/api/v1/visualizer/",
+        "packages/db/",
+        "packages/viz/prediction/"
+      ],
+      "acceptance": [
+        "Submit/reveal rules preserve original first prediction and reject spoofed correctness.",
+        "Future-step disclosure is controlled for scored checkpoints; public unscored playback awards no mastery."
+      ],
+      "deliverables": [
+        "Prediction API and storage"
+      ],
+      "required_evidence": [
+        "Prediction concurrency/replay/disclosure tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-QA-001",
+      "milestone": "M2",
+      "role": "qa",
+      "title": "Verify trace correctness, synchronisation and performance",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-CODE-004"
+      ],
+      "requirements": [
+        "GOV-003",
+        "VIZ-001",
+        "VIZ-002",
+        "VIZ-003",
+        "VIZ-004",
+        "VIZ-005",
+        "VIZ-006",
+        "VIZ-007"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M2/"
+      ],
+      "acceptance": [
+        "Check all five algorithms, four languages and six renderer families.",
+        "Verify >2000-step windowing, keyboard/reduced motion and recorded <100-ms steps."
+      ],
+      "deliverables": [
+        "M2 review"
+      ],
+      "required_evidence": [
+        "Unit/E2E/performance/staging evidence"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M2-LEAD-002",
+      "milestone": "M2",
+      "role": "lead",
+      "title": "Integrate and accept M2",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "All M2 requirements have actual evidence.",
+        "Publish accepted contracts for M3 and update changelog."
+      ],
+      "deliverables": [
+        "M2 acceptance"
+      ],
+      "required_evidence": [
+        "QA and integrated revision"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M2_PLAN_READY",
+        "M1_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-LEAD-001",
+      "milestone": "M3",
+      "role": "lead",
+      "title": "Define lab/content/version/scoring contracts",
+      "status": "PLANNED",
+      "depends_on": [
+        "M2-LEAD-002"
+      ],
+      "requirements": [
+        "LAB-001",
+        "LAB-002",
+        "LAB-003",
+        "LAB-004",
+        "LAB-005",
+        "DRAW-001"
+      ],
+      "allowed_paths": [
+        "docs/plans/M3.md",
+        "docs/contracts/"
+      ],
+      "acceptance": [
+        "Specify seven activity contracts and immutable content/evidence versions.",
+        "Literal completion/mastery/hint/reveal rules and skill prerequisites are explicit."
+      ],
+      "deliverables": [
+        "M3 plan and contracts"
+      ],
+      "required_evidence": [
+        "Learning/data contract review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-UX-001",
+      "milestone": "M3",
+      "role": "ui-ux",
+      "title": "Design all seven activity flows and author preview",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-LEAD-001"
+      ],
+      "requirements": [
+        "LAB-001",
+        "LAB-007",
+        "DRAW-001",
+        "NFR-002"
+      ],
+      "allowed_paths": [
+        "docs/design/M3/"
+      ],
+      "acceptance": [
+        "Every interaction has a keyboard/mobile/text alternative and recovery states.",
+        "Basic graph editing is distinct from M5 scenario simulation."
+      ],
+      "deliverables": [
+        "Activity design system"
+      ],
+      "required_evidence": [
+        "UX/learning checklist"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CONTENT-001",
+      "milestone": "M3",
+      "role": "content",
+      "title": "Define skill graph, sources and 15-lab learning briefs",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-LEAD-001"
+      ],
+      "requirements": [
+        "LAB-005",
+        "LAB-006",
+        "LAB-007",
+        "INT-001"
+      ],
+      "allowed_paths": [
+        "packages/content/skills/",
+        "packages/content/sources/",
+        "docs/content/"
+      ],
+      "acceptance": [
+        "Fifteen original/reviewable briefs span four tracks; four first-track free labs are designated.",
+        "Sources/rights status and every \u00a74 coverage gap remain visible."
+      ],
+      "deliverables": [
+        "Skill/source manifests",
+        "Launch briefs"
+      ],
+      "required_evidence": [
+        "Prerequisite and publication review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CODE-001",
+      "milestone": "M3",
+      "role": "coding",
+      "title": "Implement attempt/hint APIs and versioned learning schema",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-LEAD-001"
+      ],
+      "requirements": [
+        "LAB-003",
+        "LAB-004",
+        "LAB-005",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/labs/server/",
+        "apps/web/src/app/api/v1/learning/"
+      ],
+      "acceptance": [
+        "Idempotency payload validation and atomic first-attempt assignment work.",
+        "Server records hints/timing/weaknesses with pinned content version and user ownership."
+      ],
+      "deliverables": [
+        "Learning migrations/APIs"
+      ],
+      "required_evidence": [
+        "Concurrency/idempotency/ownership tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CODE-002",
+      "milestone": "M3",
+      "role": "coding",
+      "title": "Implement seven activity templates and basic diagram builder",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-UX-001",
+        "M3-CODE-001"
+      ],
+      "requirements": [
+        "LAB-001",
+        "DRAW-001",
+        "NFR-002",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "packages/labs/client/",
+        "packages/labs/diagram/",
+        "packages/ui/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "All seven activities submit through server validators and preserve drafts on failure.",
+        "Typed diagrams support labels/edges/undo/save-resume and accessible list editing."
+      ],
+      "deliverables": [
+        "Activity player and graph editor"
+      ],
+      "required_evidence": [
+        "All-type E2E",
+        "Diagram/keyboard/recovery checks"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CODE-003",
+      "milestone": "M3",
+      "role": "coding",
+      "title": "Implement server completion/mastery/weakness derivation",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-CODE-001",
+        "M3-CONTENT-001"
+      ],
+      "requirements": [
+        "LAB-004",
+        "LAB-005"
+      ],
+      "allowed_paths": [
+        "packages/labs/scoring/",
+        "packages/labs/server/progress/"
+      ],
+      "acceptance": [
+        "Threshold/coverage tests include scored versus unscored, hinted first answers and zero-scored content.",
+        "Retries/reviews/bundle overlap cannot mutate original first submissions or duplicate lab progress."
+      ],
+      "deliverables": [
+        "Progress/scoring service"
+      ],
+      "required_evidence": [
+        "Boundary/concurrency/version regression tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CODE-004",
+      "milestone": "M3",
+      "role": "coding",
+      "title": "Implement content compiler, validation and hot preview",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-LEAD-001",
+        "M3-CONTENT-001"
+      ],
+      "requirements": [
+        "LAB-002",
+        "LAB-006",
+        "INT-001"
+      ],
+      "allowed_paths": [
+        "packages/content/schema/",
+        "packages/content/compiler/",
+        "apps/admin/src/content-preview/",
+        "apps/admin/src/content-publication/",
+        "apps/web/src/app/api/v1/admin/content/"
+      ],
+      "acceptance": [
+        "Invalid skills/prerequisites/explanations/hint limits/answer keys fail CI.",
+        "Versioned lab.yaml preview hot reloads all activity contracts and interview-angle text.",
+        "Authorised admin content validate/publish endpoints preserve immutable versions and reject invalid, unreviewed or unapproved source publication."
+      ],
+      "deliverables": [
+        "Compiler/preview/CI checks"
+      ],
+      "required_evidence": [
+        "Invalid-content fixtures",
+        "Preview journey",
+        "Admin validation/publication authorisation and source-approval tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-CONTENT-002",
+      "milestone": "M3",
+      "role": "content",
+      "title": "Author and review initial 15 labs",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-CODE-002",
+        "M3-CODE-003",
+        "M3-CODE-004"
+      ],
+      "requirements": [
+        "LAB-006",
+        "LAB-007",
+        "INT-001"
+      ],
+      "allowed_paths": [
+        "packages/content/labs/",
+        "packages/content/locales/"
+      ],
+      "acceptance": [
+        "Fifteen labs each contain 3\u20138 activities and reviewed skills/explanations/reference answers.",
+        "Third-party publication remains gated on OPEN-04; original drafts can proceed."
+      ],
+      "deliverables": [
+        "15 validated lab versions"
+      ],
+      "required_evidence": [
+        "Content/educational review",
+        "Source approval evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-QA-001",
+      "milestone": "M3",
+      "role": "qa",
+      "title": "Verify full lab experience and content launch gate",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-CONTENT-002"
+      ],
+      "requirements": [
+        "GOV-003",
+        "LAB-001",
+        "LAB-002",
+        "LAB-003",
+        "LAB-004",
+        "LAB-005",
+        "LAB-006",
+        "LAB-007",
+        "DRAW-001",
+        "INT-001",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M3/"
+      ],
+      "acceptance": [
+        "All seven activity types and literal mastery pass integrated tests.",
+        "Count only reviewed publishable labs; distinguish templates and blocked source drafts."
+      ],
+      "deliverables": [
+        "M3 verdict"
+      ],
+      "required_evidence": [
+        "15-lab validation",
+        "Learning/diagram E2E/staging review"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M3-LEAD-002",
+      "milestone": "M3",
+      "role": "lead",
+      "title": "Accept content engine and permit M4 planning",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "M3 evidence is complete before billing implementation starts.",
+        "Record published content and outstanding larger curriculum scope."
+      ],
+      "deliverables": [
+        "M3 acceptance"
+      ],
+      "required_evidence": [
+        "QA and publication evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M3_PLAN_READY",
+        "M2_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-LEAD-001",
+      "milestone": "M4",
+      "role": "lead",
+      "title": "Define commerce policies and grant contracts",
+      "status": "PLANNED",
+      "depends_on": [
+        "M3-LEAD-002"
+      ],
+      "requirements": [
+        "STORE-002",
+        "STORE-003",
+        "STORE-006"
+      ],
+      "allowed_paths": [
+        "docs/plans/M4.md",
+        "docs/decisions.md"
+      ],
+      "acceptance": [
+        "Model independent grant sources and growing bundle entitlements.",
+        "Record applicable owner pricing/market/tax/company decisions before affected live configuration."
+      ],
+      "deliverables": [
+        "M4 plan and owner decision mapping"
+      ],
+      "required_evidence": [
+        "Policy/grant review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-UX-001",
+      "milestone": "M4",
+      "role": "ui-ux",
+      "title": "Design catalog, free previews and purchase/access states",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-LEAD-001"
+      ],
+      "requirements": [
+        "STORE-001",
+        "STORE-005"
+      ],
+      "allowed_paths": [
+        "docs/design/M4/"
+      ],
+      "acceptance": [
+        "Catalog filters and first activity preview show clear unlock terms.",
+        "Free first lab per track and owned/locked/refunded/granted states stay distinct from progress."
+      ],
+      "deliverables": [
+        "Store/admin interaction spec"
+      ],
+      "required_evidence": [
+        "UX/entitlement state review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-CODE-001",
+      "milestone": "M4",
+      "role": "coding",
+      "title": "Implement provenance grants and access derivation",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-LEAD-001"
+      ],
+      "requirements": [
+        "STORE-002",
+        "STORE-003"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/commerce/grants/",
+        "packages/commerce/entitlements/"
+      ],
+      "acceptance": [
+        "One active source is enough for access; refund/expiry touches only its grants.",
+        "Growing bundle grants preserve one learner/lab progress row."
+      ],
+      "deliverables": [
+        "Grant ledger/migrations"
+      ],
+      "required_evidence": [
+        "Overlap/growth/refund matrix"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-CODE-002",
+      "milestone": "M4",
+      "role": "coding",
+      "title": "Implement checkout/webhook/refund/reconciliation test flows",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-CODE-001"
+      ],
+      "requirements": [
+        "STORE-004",
+        "STORE-006"
+      ],
+      "allowed_paths": [
+        "packages/commerce/payments/",
+        "apps/web/src/app/api/v1/billing/",
+        "apps/worker/src/reconciliation/"
+      ],
+      "acceptance": [
+        "Verify signatures, replay/idempotency, ordering and retry behaviour.",
+        "Daily reconciliation repairs missing access; tests use sandbox prices and no live charge.",
+        "An authenticated customer-portal endpoint derives the payment customer from the server identity; reject cross-user customer IDs and untrusted return URLs."
+      ],
+      "deliverables": [
+        "Payment service and reconciler"
+      ],
+      "required_evidence": [
+        "Stripe test-mode evidence",
+        "Webhook/reconciliation tests",
+        "Customer-portal ownership and safe-return-URL tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-CODE-003",
+      "milestone": "M4",
+      "role": "coding",
+      "title": "Build store, previews and admin commerce actions",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-UX-001",
+        "M4-CODE-002"
+      ],
+      "requirements": [
+        "STORE-001",
+        "STORE-005",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app/catalog/",
+        "apps/web/src/app/store/",
+        "apps/admin/src/commerce/",
+        "packages/i18n/",
+        "apps/admin/src/users/",
+        "apps/web/src/app/api/v1/admin/users/"
+      ],
+      "acceptance": [
+        "Server enforces preview/access boundaries and admin privileges.",
+        "Products/prices/bundles/grants/revokes/refund view are configured without source-code pricing.",
+        "Admin user lookup is role-authorised, privacy-bounded, audited and denied to ordinary learners."
+      ],
+      "deliverables": [
+        "Store/admin screens/APIs"
+      ],
+      "required_evidence": [
+        "Purchase-to-learning E2E",
+        "Admin/paid-content negative checks"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-OPS-001",
+      "milestone": "M4",
+      "role": "devops",
+      "title": "Verify commerce delivery, event recovery and market configuration gates",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-CODE-003"
+      ],
+      "requirements": [
+        "STORE-004",
+        "STORE-006",
+        "NFR-004",
+        "NFR-005"
+      ],
+      "allowed_paths": [
+        "infra/",
+        "docs/operations/",
+        "docs/reviews/M4/"
+      ],
+      "acceptance": [
+        "Event processing and reconciliation have monitoring/recovery evidence.",
+        "Live market/tax/price configuration remains disabled until owner choices and release gates."
+      ],
+      "deliverables": [
+        "Commerce runbook/config"
+      ],
+      "required_evidence": [
+        "Recovery/replay/staging evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-QA-001",
+      "milestone": "M4",
+      "role": "qa",
+      "title": "Test overlapping access, free tier and adverse payment sequences",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-OPS-001"
+      ],
+      "requirements": [
+        "GOV-003",
+        "STORE-001",
+        "STORE-002",
+        "STORE-003",
+        "STORE-004",
+        "STORE-005",
+        "STORE-006"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M4/"
+      ],
+      "acceptance": [
+        "Overlap/refund/growth/replay/order/admin and reconciliation cases pass.",
+        "Payment success never awards completion or resets mastery."
+      ],
+      "deliverables": [
+        "M4 verdict"
+      ],
+      "required_evidence": [
+        "Access/purchase matrix",
+        "Desktop/phone staging journey"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M4-LEAD-002",
+      "milestone": "M4",
+      "role": "lead",
+      "title": "Accept store mechanics and report commercial decision status",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Accept only actual test-mode and access evidence.",
+        "Do not equate M4 tests with public paid-launch approval."
+      ],
+      "deliverables": [
+        "M4 acceptance"
+      ],
+      "required_evidence": [
+        "QA and decision register"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M4_PLAN_READY",
+        "M3_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-LEAD-001",
+      "milestone": "M5",
+      "role": "lead",
+      "title": "Specify spaced review, recommendations and sandbox models",
+      "status": "PLANNED",
+      "depends_on": [
+        "M4-LEAD-002"
+      ],
+      "requirements": [
+        "REVIEW-001",
+        "REVIEW-002",
+        "REVIEW-003",
+        "REVIEW-004",
+        "DRAW-002"
+      ],
+      "allowed_paths": [
+        "docs/plans/M5.md",
+        "docs/contracts/"
+      ],
+      "acceptance": [
+        "Version review schedule/readiness formula and graph recommendation explanations.",
+        "Define deterministic seeded simulation/rubric and diagram version/ownership contracts."
+      ],
+      "deliverables": [
+        "M5 contracts"
+      ],
+      "required_evidence": [
+        "Learning/model review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-UX-001",
+      "milestone": "M5",
+      "role": "ui-ux",
+      "title": "Design Revisit/readiness and expanded architecture workspace",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-LEAD-001"
+      ],
+      "requirements": [
+        "REVIEW-002",
+        "REVIEW-003",
+        "REVIEW-004",
+        "DRAW-002"
+      ],
+      "allowed_paths": [
+        "docs/design/M5/"
+      ],
+      "acceptance": [
+        "5\u201310-minute review flow and readiness explain contributing weak skills.",
+        "Canvas has keyboard/list/mobile alternatives and transparent rubric states."
+      ],
+      "deliverables": [
+        "Review/sandbox interaction specs"
+      ],
+      "required_evidence": [
+        "UX checklist"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-CODE-001",
+      "milestone": "M5",
+      "role": "coding",
+      "title": "Implement review scheduler, weakness queue and recommendation service",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-LEAD-001"
+      ],
+      "requirements": [
+        "REVIEW-001",
+        "REVIEW-002",
+        "REVIEW-003"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/labs/review/",
+        "packages/labs/recommend/",
+        "apps/web/src/app/api/v1/review/"
+      ],
+      "acceptance": [
+        "Clock/boundary/version tests preserve original first evidence and update review schedule.",
+        "Prerequisites/background/goal/date produce explainable recommendation decisions."
+      ],
+      "deliverables": [
+        "Scheduler/recommendations"
+      ],
+      "required_evidence": [
+        "Time/graph/retry tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-CODE-002",
+      "milestone": "M5",
+      "role": "coding",
+      "title": "Implement explainable progress dashboard",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-UX-001",
+        "M5-CODE-001"
+      ],
+      "requirements": [
+        "REVIEW-004",
+        "FND-006",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app/dashboard/",
+        "apps/web/src/app/revisit/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "Owned/completed/mastered/due/streak/weakness/readiness remain separate.",
+        "Revisit/resume is clear and within two taps."
+      ],
+      "deliverables": [
+        "Dashboard/review UI"
+      ],
+      "required_evidence": [
+        "Dashboard/revisit E2E"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-CODE-003",
+      "milestone": "M5",
+      "role": "coding",
+      "title": "Implement saved architecture sandbox and seeded simulation",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-UX-001",
+        "M5-LEAD-001"
+      ],
+      "requirements": [
+        "DRAW-002"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/labs/sandbox/",
+        "apps/web/src/app/sandbox/",
+        "apps/web/src/app/api/v1/drawings/"
+      ],
+      "acceptance": [
+        "Seed+graph+scenario reproduce traffic/queue/failure outcomes and rubric scores.",
+        "Drawings/revisions/export/draft recovery and cross-user ownership are verified."
+      ],
+      "deliverables": [
+        "Sandbox and diagram revisions"
+      ],
+      "required_evidence": [
+        "Determinism/rubric tests",
+        "Save/recovery/ownership E2E"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-QA-001",
+      "milestone": "M5",
+      "role": "qa",
+      "title": "Verify scheduling/readiness and sandbox learning behaviour",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-CODE-002",
+        "M5-CODE-003"
+      ],
+      "requirements": [
+        "GOV-003",
+        "REVIEW-001",
+        "REVIEW-002",
+        "REVIEW-003",
+        "REVIEW-004",
+        "DRAW-002",
+        "FND-008"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M5/"
+      ],
+      "acceptance": [
+        "Wrong answer \u2192 queue \u2192 passed review updates current state without rewriting history.",
+        "Sandbox determinism, persistence and accessible journey pass."
+      ],
+      "deliverables": [
+        "M5 verdict"
+      ],
+      "required_evidence": [
+        "Temporal/simulation/staging evidence"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M5-LEAD-002",
+      "milestone": "M5",
+      "role": "lead",
+      "title": "Accept review and sandbox milestone",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Record documented schedule/rubric versions and measured evidence.",
+        "Publish accepted interfaces for M6."
+      ],
+      "deliverables": [
+        "M5 acceptance"
+      ],
+      "required_evidence": [
+        "QA and integrated commit"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M5_PLAN_READY",
+        "M4_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-LEAD-001",
+      "milestone": "M6",
+      "role": "lead",
+      "title": "Specify interview and coach source/quota policies",
+      "status": "PLANNED",
+      "depends_on": [
+        "M5-LEAD-002"
+      ],
+      "requirements": [
+        "INT-002",
+        "INT-003",
+        "COACH-001",
+        "COACH-002",
+        "COACH-003",
+        "COACH-005"
+      ],
+      "allowed_paths": [
+        "docs/plans/M6.md",
+        "docs/contracts/",
+        "docs/decisions.md"
+      ],
+      "acceptance": [
+        "Resolve applicable owner coach packaging/source/company decisions before affected use.",
+        "Define server mock guard, approved evidence scope, monthly period and quota failure policy."
+      ],
+      "deliverables": [
+        "M6 plan/policies"
+      ],
+      "required_evidence": [
+        "Policy/source approval review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-CONTENT-001",
+      "milestone": "M6",
+      "role": "content",
+      "title": "Publish interview question/angle and source-section mappings",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-LEAD-001"
+      ],
+      "requirements": [
+        "INT-001",
+        "INT-002",
+        "COACH-001",
+        "COACH-002"
+      ],
+      "allowed_paths": [
+        "packages/content/questions/",
+        "packages/content/sources/",
+        "packages/content/labs/"
+      ],
+      "acceptance": [
+        "Questions span DSA/system-design/behavioural with level/skill/theme metadata.",
+        "Only approved lesson/source sections and versioned model outlines enter the coach index."
+      ],
+      "deliverables": [
+        "Question/source corpus"
+      ],
+      "required_evidence": [
+        "Editorial/approval/citation mapping review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-CODE-001",
+      "milestone": "M6",
+      "role": "coding",
+      "title": "Implement question bank and server-timed mock sessions",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-CONTENT-001"
+      ],
+      "requirements": [
+        "INT-002",
+        "INT-003",
+        "COACH-003"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/interview/",
+        "apps/web/src/app/interview/",
+        "apps/web/src/app/api/v1/interview/"
+      ],
+      "acceptance": [
+        "Prompt/notes/timer/final review persist under account ownership.",
+        "Server session state denies solution/reveal access despite altered client flags."
+      ],
+      "deliverables": [
+        "Interview service/UI"
+      ],
+      "required_evidence": [
+        "Session/guard-bypass tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-CODE-002",
+      "milestone": "M6",
+      "role": "coding",
+      "title": "Implement pgvector scoped retrieval and citation evaluation",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-CONTENT-001"
+      ],
+      "requirements": [
+        "COACH-001",
+        "COACH-002",
+        "COACH-003"
+      ],
+      "allowed_paths": [
+        "packages/db/",
+        "packages/coach/retrieval/",
+        "packages/coach/evals/"
+      ],
+      "acceptance": [
+        "Embeddings/pgvector only retrieve permitted published section versions.",
+        "Grounding/citation/abstention/injection/mock filtering are measured against fixed cases."
+      ],
+      "deliverables": [
+        "Retrieval/index/evaluation pipeline"
+      ],
+      "required_evidence": [
+        "Retrieval quality report",
+        "Source isolation and citation tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-CODE-003",
+      "milestone": "M6",
+      "role": "coding",
+      "title": "Implement streamed coach, stored deletion and atomic quotas",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-CODE-001",
+        "M6-CODE-002"
+      ],
+      "requirements": [
+        "COACH-003",
+        "COACH-004",
+        "COACH-005"
+      ],
+      "allowed_paths": [
+        "packages/coach/service/",
+        "apps/web/src/app/api/v1/coach/",
+        "apps/web/src/components/coach/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "Owner-scoped conversations stream with citations and deletable content.",
+        "Quota reservation/replay/month boundary/outage handling works; labs remain usable without model."
+      ],
+      "deliverables": [
+        "Coach service/UI"
+      ],
+      "required_evidence": [
+        "Quota/deletion/outage tests",
+        "Separate live-provider probe"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-QA-001",
+      "milestone": "M6",
+      "role": "qa",
+      "title": "Independently evaluate grounding, mock guard and coaching",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-CODE-003"
+      ],
+      "requirements": [
+        "GOV-003",
+        "INT-001",
+        "INT-002",
+        "INT-003",
+        "COACH-001",
+        "COACH-002",
+        "COACH-003",
+        "COACH-004",
+        "COACH-005"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M6/"
+      ],
+      "acceptance": [
+        "Unsupported/paraphrased injection and cross-thread/direct mock bypass cases are covered.",
+        "Fixtures and actual Anthropic live results are separately reported; invalid credential cannot pass."
+      ],
+      "deliverables": [
+        "M6 verdict"
+      ],
+      "required_evidence": [
+        "Grounding/mock/privacy/e2e/live evidence"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M6-LEAD-002",
+      "milestone": "M6",
+      "role": "lead",
+      "title": "Accept interview/coaching milestone",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Coach policy/source rights/quota decisions and required evidence are complete.",
+        "Record known quality limits and approved content/index versions."
+      ],
+      "deliverables": [
+        "M6 acceptance"
+      ],
+      "required_evidence": [
+        "QA and source approvals"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M6_PLAN_READY",
+        "M5_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-LEAD-001",
+      "milestone": "M7",
+      "role": "lead",
+      "title": "Plan growth packaging and launch audit",
+      "status": "PLANNED",
+      "depends_on": [
+        "M6-LEAD-002"
+      ],
+      "requirements": [
+        "GROW-001",
+        "GROW-002",
+        "GROW-003",
+        "GROW-004",
+        "NFR-006"
+      ],
+      "allowed_paths": [
+        "docs/plans/M7.md",
+        "docs/decisions.md"
+      ],
+      "acceptance": [
+        "Owner commercial/coach decisions are resolved before affected subscriptions/marketing.",
+        "Define key pages/device profile and launch operational evidence."
+      ],
+      "deliverables": [
+        "M7 plan"
+      ],
+      "required_evidence": [
+        "Policy/release checklist"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-CODE-001",
+      "milestone": "M7",
+      "role": "coding",
+      "title": "Implement subscriptions, promotions/referrals and lifecycle email",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-LEAD-001"
+      ],
+      "requirements": [
+        "GROW-001",
+        "GROW-002"
+      ],
+      "allowed_paths": [
+        "packages/commerce/",
+        "apps/admin/src/commerce/",
+        "packages/email/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "Subscription transitions preserve outright grants and progress.",
+        "Promos/referrals/lifecycle emails have idempotency, consent and unsubscribe rules."
+      ],
+      "deliverables": [
+        "Growth commerce/email services"
+      ],
+      "required_evidence": [
+        "Subscription/grant/consent matrix"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-CODE-002",
+      "milestone": "M7",
+      "role": "coding",
+      "title": "Implement SEO pages, analytics and privacy lifecycle",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-LEAD-001"
+      ],
+      "requirements": [
+        "GROW-003",
+        "NFR-003",
+        "NFR-004"
+      ],
+      "allowed_paths": [
+        "apps/web/src/app/",
+        "apps/admin/src/analytics/",
+        "packages/analytics/",
+        "packages/privacy/"
+      ],
+      "acceptance": [
+        "Public free visualization pages and analytics avoid leaking paid/private content.",
+        "User export/deletion and consent lifecycle are verified before public pilot."
+      ],
+      "deliverables": [
+        "Landing/analytics/privacy flows"
+      ],
+      "required_evidence": [
+        "SEO/privacy/event tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-UX-001",
+      "milestone": "M7",
+      "role": "ui-ux",
+      "title": "Audit and remediate full accessibility/usability flows",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-CODE-001",
+        "M7-CODE-002"
+      ],
+      "requirements": [
+        "GROW-004",
+        "NFR-002"
+      ],
+      "allowed_paths": [
+        "docs/design/M7/",
+        "packages/ui/",
+        "packages/i18n/"
+      ],
+      "acceptance": [
+        "WCAG 2.2 AA manual+automated audit covers all activity and purchase/mock flows.",
+        "Phone/tablet/desktop/light/dark/error states and two-tap continuation meet contract."
+      ],
+      "deliverables": [
+        "Audit/findings/fixes"
+      ],
+      "required_evidence": [
+        "Accessibility evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-OPS-001",
+      "milestone": "M7",
+      "role": "devops",
+      "title": "Verify performance, reliability, restore and release operations",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-CODE-001",
+        "M7-CODE-002"
+      ],
+      "requirements": [
+        "NFR-001",
+        "NFR-004",
+        "NFR-005",
+        "NFR-006",
+        "GROW-004"
+      ],
+      "allowed_paths": [
+        "infra/",
+        "docs/operations/",
+        "docs/reviews/M7/"
+      ],
+      "acceptance": [
+        "Recorded meaningful paint/step latency/Lighthouse and availability telemetry meet gates.",
+        "Demonstrate daily backup restore, rollback, alerts, secrets and release identity."
+      ],
+      "deliverables": [
+        "Operational readiness reports"
+      ],
+      "required_evidence": [
+        "Performance/restore/rollback/alert evidence"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-QA-001",
+      "milestone": "M7",
+      "role": "qa",
+      "title": "Run integrated commercial/privacy/a11y launch regression",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-UX-001",
+        "M7-OPS-001"
+      ],
+      "requirements": [
+        "GOV-003",
+        "GROW-001",
+        "GROW-002",
+        "GROW-003",
+        "GROW-004",
+        "NFR-001",
+        "NFR-002",
+        "NFR-003",
+        "NFR-004",
+        "NFR-005",
+        "NFR-006",
+        "NFR-007"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M7/"
+      ],
+      "acceptance": [
+        "Review exact release revision, access, lifecycle and learning journeys.",
+        "Actual audits, provider tests and operations evidence exist; unresolved MUST findings block release.",
+        "Verify applicable ASVS level 2 controls, signup bot protection and account-sharing signal safeguards against the release candidate."
+      ],
+      "deliverables": [
+        "M7 launch verdict"
+      ],
+      "required_evidence": [
+        "Full release evidence map"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M7-LEAD-002",
+      "milestone": "M7",
+      "role": "lead",
+      "title": "Accept release candidate under owner release policy",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003",
+        "STORE-006"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Map public launch to resolved product decisions and accepted release evidence.",
+        "Record deployment authorisation separately; do not deploy merely because plan exists."
+      ],
+      "deliverables": [
+        "M7 acceptance/release proposal"
+      ],
+      "required_evidence": [
+        "QA, policy and release record"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M7_PLAN_READY",
+        "M6_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M8-LEAD-001",
+      "milestone": "M8",
+      "role": "lead",
+      "title": "Plan full curriculum expansion and compare semantics",
+      "status": "PLANNED",
+      "depends_on": [
+        "M7-LEAD-002"
+      ],
+      "requirements": [
+        "SCALE-001",
+        "SCALE-002",
+        "SCALE-003",
+        "SCALE-004",
+        "VIZ-008"
+      ],
+      "allowed_paths": [
+        "docs/plans/M8.md",
+        "docs/content/"
+      ],
+      "acceptance": [
+        "Track every \u00a74 topic against authored/published content and remaining gaps.",
+        "Keep team seats and excluded capabilities deferred unless specifically authorised."
+      ],
+      "deliverables": [
+        "Expansion/compare plan"
+      ],
+      "required_evidence": [
+        "Coverage and scope review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M8_PLAN_READY",
+        "M7_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M8-CODE-001",
+      "milestone": "M8",
+      "role": "coding",
+      "title": "Add reference algorithms, languages and compare player",
+      "status": "PLANNED",
+      "depends_on": [
+        "M8-LEAD-001"
+      ],
+      "requirements": [
+        "SCALE-002",
+        "VIZ-008"
+      ],
+      "allowed_paths": [
+        "packages/algos/",
+        "packages/viz/",
+        "packages/content/code/"
+      ],
+      "acceptance": [
+        "Same-input side-by-side playback has explicit step/counter semantics.",
+        "Added algorithms/languages preserve mappings, deterministic outputs and accessibility."
+      ],
+      "deliverables": [
+        "Expanded reference/compare components"
+      ],
+      "required_evidence": [
+        "Algorithm/mapping/compare/performance tests"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M8_PLAN_READY",
+        "M7_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M8-CONTENT-001",
+      "milestone": "M8",
+      "role": "content",
+      "title": "Author and validate at least 60 published labs",
+      "status": "PLANNED",
+      "depends_on": [
+        "M8-CODE-001"
+      ],
+      "requirements": [
+        "SCALE-001"
+      ],
+      "allowed_paths": [
+        "packages/content/",
+        "docs/content/"
+      ],
+      "acceptance": [
+        ">=60 approved authored labs use 3\u20138 validated activities and verified answer keys.",
+        "All \u00a74 topics are covered or remain explicitly unresolved in release scope; template count never stands in for lab count."
+      ],
+      "deliverables": [
+        "Expanded reviewed curriculum"
+      ],
+      "required_evidence": [
+        "Publication/source/skill coverage review"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M8_PLAN_READY",
+        "M7_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M8-QA-001",
+      "milestone": "M8",
+      "role": "qa",
+      "title": "Verify scaled learning content and deferred feature boundaries",
+      "status": "PLANNED",
+      "depends_on": [
+        "M8-CONTENT-001"
+      ],
+      "requirements": [
+        "GOV-003",
+        "SCALE-001",
+        "SCALE-002",
+        "SCALE-003",
+        "SCALE-004",
+        "VIZ-008"
+      ],
+      "allowed_paths": [
+        "docs/reviews/M8/"
+      ],
+      "acceptance": [
+        "Validate published lab count, reference/rubric versions, comparisons and cross-track regressions.",
+        "Verify team/advanced/excluded features stay disabled according to actual scope."
+      ],
+      "deliverables": [
+        "M8 verdict"
+      ],
+      "required_evidence": [
+        "Content/compare/capacity/staging evidence"
+      ],
+      "reviewers": [
+        "lead"
+      ],
+      "entry_gates": [
+        "M8_PLAN_READY",
+        "M7_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    },
+    {
+      "id": "M8-LEAD-002",
+      "milestone": "M8",
+      "role": "lead",
+      "title": "Accept expansion and report remaining scope",
+      "status": "PLANNED",
+      "depends_on": [
+        "M8-QA-001"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003",
+        "SCALE-001"
+      ],
+      "allowed_paths": [
+        "docs/CHANGELOG.md",
+        "agents/runs/"
+      ],
+      "acceptance": [
+        "Acceptance links exact content/application versions and reviewed coverage.",
+        "Record outstanding later features and content gaps rather than claiming them complete."
+      ],
+      "deliverables": [
+        "M8 acceptance"
+      ],
+      "required_evidence": [
+        "QA and coverage map"
+      ],
+      "reviewers": [
+        "qa"
+      ],
+      "entry_gates": [
+        "M8_PLAN_READY",
+        "M7_ACCEPTED"
+      ],
+      "shared_write_policy": "Lead narrows these directory families to exclusive files before dispatch; manifest/migration/schema ownership is serialized."
+    }
+  ]
+}

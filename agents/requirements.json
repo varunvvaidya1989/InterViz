@@ -1,0 +1,752 @@
+{
+  "version": "1.0",
+  "prepared_at": "2026-11-10",
+  "source": {
+    "path": "planning/Systems Labs Product Specification.md",
+    "sha256": "31afbaa2528e21e984332d86629d493d7b4d6aaec38853c6fcb796714a581017"
+  },
+  "requirements": [
+    {
+      "id": "GOV-001",
+      "priority": "MUST",
+      "source_sections": [
+        "0",
+        "13"
+      ],
+      "milestone": "M1",
+      "title": "Specification authority and sequential milestones",
+      "acceptance": "M1\u2013M8 execute in order; older harness roadmap cannot supersede the product specification.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GOV-002",
+      "priority": "MUST",
+      "source_sections": [
+        "0",
+        "15",
+        "16"
+      ],
+      "milestone": "M1",
+      "title": "Pre-code plans, approval and changelog",
+      "acceptance": "M1 has owner approval before application coding; accepted M1 ends with a stop/report; each later milestone has a pre-code plan and accepted-result changelog.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GOV-003",
+      "priority": "MUST",
+      "source_sections": [
+        "15"
+      ],
+      "milestone": "M1",
+      "title": "Evidence-based definition of done",
+      "acceptance": "Each feature maps acceptance to tests, accessibility, states, docs, events, applicable flags, and desktop/phone staging evidence.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GOV-004",
+      "priority": "MUST",
+      "source_sections": [
+        "0",
+        "14"
+      ],
+      "milestone": "M1",
+      "title": "Routine decisions and deferred scope",
+      "acceptance": "Only \u00a714 product OPEN items go to the owner; routine choices are recorded; out-of-scope/LATER features are not silently built.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-001",
+      "priority": "MUST",
+      "source_sections": [
+        "7.1",
+        "7.2",
+        "13"
+      ],
+      "milestone": "M1",
+      "title": "Typed monorepo and reproducible checks",
+      "acceptance": "pnpm workspaces, pinned compatible toolchain, lockfile, build, lint, type checks, unit/E2E CI and declared package boundaries exist.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-002",
+      "priority": "MUST",
+      "source_sections": [
+        "6"
+      ],
+      "milestone": "M1",
+      "title": "Design system, themes and translations",
+      "acceptance": "Light/dark/system themes, per-track tokens, reusable states and English translation keys cover UI, messages and accessibility labels.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-003",
+      "priority": "MUST",
+      "source_sections": [
+        "7.1",
+        "9"
+      ],
+      "milestone": "M1",
+      "title": "Full identity lifecycle",
+      "acceptance": "Email/password, verification, reset, signout/revocation, Google and GitHub integrations use an established library and safe session/account-linking rules.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-004",
+      "priority": "MUST",
+      "source_sections": [
+        "7",
+        "8",
+        "9",
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Database and API foundations",
+      "acceptance": "Migrations, auth/profile/audit schema, typed errors, input validation, route-level authorisation and shared rate limits are verified.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-005",
+      "priority": "MUST",
+      "source_sections": [
+        "5.8"
+      ],
+      "milestone": "M1",
+      "title": "Learner onboarding/profile",
+      "acceptance": "Background, level, goal and optional interview date save/load; onboarding is skippable and editable.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-006",
+      "priority": "SHOULD",
+      "source_sections": [
+        "5.8",
+        "6"
+      ],
+      "milestone": "M1",
+      "title": "Quick onboarding usability target",
+      "acceptance": "Skippable onboarding is usability-tested against the SHOULD target of under 60 seconds; this recommendation does not weaken mandatory continuation accessibility.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-007",
+      "priority": "MUST",
+      "source_sections": [
+        "5.6",
+        "13"
+      ],
+      "milestone": "M1",
+      "title": "Empty dashboard foundation",
+      "acceptance": "New accounts see a useful accessible dashboard distinguishing access, completion and mastery without fabricated progress.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "FND-008",
+      "priority": "MUST",
+      "source_sections": [
+        "6"
+      ],
+      "milestone": "M1",
+      "title": "Continue learning within two taps",
+      "acceptance": "The navigation foundation supports continuation within two taps; verify the actual last-activity resume path when activities ship in M3 and the full dashboard in M5.",
+      "verification": "Design contract and browser interaction count on the relevant integrated/staging revision; empty M1 state does not fabricate an active lab."
+    },
+    {
+      "id": "VIZ-001",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1",
+        "7.3"
+      ],
+      "milestone": "M2",
+      "title": "Versioned deterministic trace contract",
+      "acceptance": "Tested reference logic/build-time or server trace generation produces stable steps and correct final states; renderers contain no algorithm logic.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-002",
+      "priority": "MUST",
+      "source_sections": [
+        "13"
+      ],
+      "milestone": "M2",
+      "title": "Five initial algorithms",
+      "acceptance": "Bubble sort, binary search, BFS, DFS and tree inorder have input/boundary/final-state and stable-step fixtures.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-003",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1"
+      ],
+      "milestone": "M2",
+      "title": "All renderer families",
+      "acceptance": "Bars/cells, linked nodes, trees, graphs, tables and call stacks render validated snapshots with text alternatives.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-004",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1"
+      ],
+      "milestone": "M2",
+      "title": "Synchronized visual/code/narration and languages",
+      "acceptance": "One logical step drives all panels; pseudocode/Python/JavaScript/Java line mapping remains correct when switching languages.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-005",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1"
+      ],
+      "milestone": "M2",
+      "title": "Playback, keyboard and input controls",
+      "acceptance": "Play/pause, forward/back, restart, scrubber, >=3 speeds, arrows/space and validated custom arrays/targets/graphs/start nodes work.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-006",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1",
+        "3.2"
+      ],
+      "milestone": "M2",
+      "title": "Predict-before-disclosure",
+      "acceptance": "Pending predictions pause before reveal; immutable first-submission evidence is recorded server-side.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-007",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1",
+        "6",
+        "12"
+      ],
+      "milestone": "M2",
+      "title": "Reduced-motion and long-trace performance",
+      "acceptance": "Keyboard/reduced-motion retain information; >2,000-step traces use windowing; recorded target shows <100-ms step changes.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "VIZ-008",
+      "priority": "SHOULD",
+      "source_sections": [
+        "5.1",
+        "13"
+      ],
+      "milestone": "M8",
+      "title": "Compare mode",
+      "acceptance": "Two algorithms use the same input with explicit independent steps/counters and deterministic comparison semantics.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-001",
+      "priority": "MUST",
+      "source_sections": [
+        "3.1",
+        "5.2"
+      ],
+      "milestone": "M3",
+      "title": "Seven activity types",
+      "acceptance": "visualize, predict, tap-flaw, order-steps, tune, choose and build-diagram support submission, feedback, recovery and accessible equivalents.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-002",
+      "priority": "MUST",
+      "source_sections": [
+        "5.2",
+        "10"
+      ],
+      "milestone": "M3",
+      "title": "Validated declarative content and author preview",
+      "acceptance": "Validated lab.yaml/activity files have skills/explanations/difficulty/<=3 hints/3?8 activities, hot-reload preview, and authorised admin validate/publish operations that reject invalid or unapproved content.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-003",
+      "priority": "MUST",
+      "source_sections": [
+        "5.2",
+        "7.3",
+        "8"
+      ],
+      "milestone": "M3",
+      "title": "Server scoring and atomic attempts",
+      "acceptance": "Idempotent retries do not duplicate attempts; concurrent distinct IDs cannot both be first; correctness/hints/timing are not trusted from client flags.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-004",
+      "priority": "MUST",
+      "source_sections": [
+        "1",
+        "3.2",
+        "8"
+      ],
+      "milestone": "M3",
+      "title": "Distinct completion/mastery and versioned progress",
+      "acceptance": "Required submissions determine completion; first-correct threshold is ceil(0.70\u00d7scored), with predict/design coverage where present; one learner/lab aggregate retains versioned evidence.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-005",
+      "priority": "MUST",
+      "source_sections": [
+        "3.2",
+        "3.3"
+      ],
+      "milestone": "M3",
+      "title": "Weaknesses and skill graph",
+      "acceptance": "Wrong answers create skill-keyed weakness evidence; activity skills and acyclic reachable prerequisites are validated.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-006",
+      "priority": "MUST",
+      "source_sections": [
+        "4",
+        "13"
+      ],
+      "milestone": "M3",
+      "title": "Fifteen authored launch labs",
+      "acceptance": "Exactly the initial 15 reviewed labs span A/B/C/D and exercise all required activity types; imported templates are not counted.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "LAB-007",
+      "priority": "SHOULD",
+      "source_sections": [
+        "2",
+        "5.8"
+      ],
+      "milestone": "M3",
+      "title": "Background-aware explanations",
+      "acceptance": "Background-specific analogies use translated original/reviewed content with a sensible generic fallback.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "DRAW-001",
+      "priority": "MUST",
+      "source_sections": [
+        "3.1",
+        "5.2"
+      ],
+      "milestone": "M3",
+      "title": "Basic scored build-diagram",
+      "acceptance": "Typed graph editor, labels/connections, keyboard/list alternative, save/resume and deterministic server structural checks work.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "DRAW-002",
+      "priority": "SHOULD",
+      "source_sections": [
+        "5.3",
+        "13"
+      ],
+      "milestone": "M5",
+      "title": "Seeded architecture sandbox",
+      "acceptance": "Components/edges, seeded traffic/failure/queue simulation and transparent requirements/SPOF/scalability/cost rubric support saved revisions and recovery.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-001",
+      "priority": "MUST",
+      "source_sections": [
+        "1",
+        "5.7",
+        "11"
+      ],
+      "milestone": "M4",
+      "title": "Catalog, first-activity preview and free tier",
+      "acceptance": "Track/level/skill filters, clear unlock path, first free lab per track and small full free visualizer set are verified.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-002",
+      "priority": "MUST",
+      "source_sections": [
+        "1",
+        "8",
+        "11"
+      ],
+      "milestone": "M4",
+      "title": "Provenance grants and one access/progress identity",
+      "acceptance": "Single/bundle/grant sources derive unique learner/lab access; overlapping grants preserve one progress record.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-003",
+      "priority": "SHOULD",
+      "source_sections": [
+        "11"
+      ],
+      "milestone": "M4",
+      "title": "Growing bundles",
+      "acceptance": "New labs in a published bundle grant access to existing eligible owners with auditable source provenance.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-004",
+      "priority": "MUST",
+      "source_sections": [
+        "7.1",
+        "9",
+        "11"
+      ],
+      "milestone": "M4",
+      "title": "Checkout, signed webhooks and reconciliation",
+      "acceptance": "Stripe test checkout, authenticated customer-portal session creation with safe return URLs, signed/idempotent/order-safe webhooks, refund effects and daily reconciliation recovery are demonstrated.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-005",
+      "priority": "MUST",
+      "source_sections": [
+        "9",
+        "11"
+      ],
+      "milestone": "M4",
+      "title": "Admin products/prices/grants/refunds",
+      "acceptance": "Authorised admin configures products/prices/bundles, looks up users, grants/revokes access and views refunds; ordinary users cannot access these actions.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "STORE-006",
+      "priority": "MUST",
+      "source_sections": [
+        "7.1",
+        "11",
+        "14"
+      ],
+      "milestone": "M4",
+      "title": "Owner-approved regional/tax/access policy",
+      "acceptance": "Live market/currency/pricing/tax configuration and affected company/source usage require corresponding OPEN decisions.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "REVIEW-001",
+      "priority": "MUST",
+      "source_sections": [
+        "3.2",
+        "5.6"
+      ],
+      "milestone": "M5",
+      "title": "Documented spaced review",
+      "acceptance": "Versioned schedule updates per skill; historical first-attempt evidence stays unchanged; successful review restores current mastered status.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "REVIEW-002",
+      "priority": "MUST",
+      "source_sections": [
+        "5.6"
+      ],
+      "milestone": "M5",
+      "title": "Revisit sessions",
+      "acceptance": "Wrong answers and due mastery produce 5\u201310-minute sessions with boundary/timezone/retry tests.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "REVIEW-003",
+      "priority": "MUST",
+      "source_sections": [
+        "3.3",
+        "5.6"
+      ],
+      "milestone": "M5",
+      "title": "Explainable next-best lab",
+      "acceptance": "Prerequisite graph, background, level, goal and interview date influence recommendations with explicit reasons.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "REVIEW-004",
+      "priority": "MUST",
+      "source_sections": [
+        "5.4",
+        "5.6"
+      ],
+      "milestone": "M5",
+      "title": "Explainable readiness/dashboard",
+      "acceptance": "Owned/completed/mastered/due/weak/streak/readiness are distinct; readiness exposes contributing skill and recency evidence.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "INT-001",
+      "priority": "MUST",
+      "source_sections": [
+        "5.4"
+      ],
+      "milestone": "M3",
+      "title": "Interview angle on every lab",
+      "acceptance": "Each launch lab includes a real preparation question and model outline; dedicated practice UI is M6.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "INT-002",
+      "priority": "MUST",
+      "source_sections": [
+        "5.4",
+        "9",
+        "13"
+      ],
+      "milestone": "M6",
+      "title": "Question bank",
+      "acceptance": "DSA/system-design/behavioural prompts filter by approved company theme, level and skill with hints/source metadata.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "INT-003",
+      "priority": "MUST",
+      "source_sections": [
+        "5.4",
+        "9"
+      ],
+      "milestone": "M6",
+      "title": "Timed mock sessions",
+      "acceptance": "Server-authoritative sessions save prompt/notes, time boundaries and final self-review; spoken mode remains later.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "COACH-001",
+      "priority": "SHOULD",
+      "source_sections": [
+        "5.5",
+        "7.1",
+        "13"
+      ],
+      "milestone": "M6",
+      "title": "Approved-source coach and pgvector retrieval",
+      "acceptance": "Anthropic service retrieves authorised published lesson/source sections using embeddings/pgvector and a measured retrieval baseline.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "COACH-002",
+      "priority": "MUST",
+      "source_sections": [
+        "5.5"
+      ],
+      "milestone": "M6",
+      "title": "Section citations and abstention",
+      "acceptance": "Every grounded explanation cites permitted versioned lesson sections; unsupported questions abstain; source/user injection is untrusted.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "COACH-003",
+      "priority": "MUST",
+      "source_sections": [
+        "5.5"
+      ],
+      "milestone": "M6",
+      "title": "Server mock-solution guard",
+      "acceptance": "Active mock status governs source/reveal access across endpoints and threads; prompt wording/client flags cannot unlock solutions.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "COACH-004",
+      "priority": "MUST",
+      "source_sections": [
+        "5.5",
+        "9"
+      ],
+      "milestone": "M6",
+      "title": "Stored/deletable streamed coaching",
+      "acceptance": "Threads/messages stream with typed errors, account ownership, citations and learner deletion; model outage leaves labs usable.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "COACH-005",
+      "priority": "MUST",
+      "source_sections": [
+        "5.5",
+        "11"
+      ],
+      "milestone": "M6",
+      "title": "Atomic plan quotas and limits",
+      "acceptance": "Per-plan/month and request/concurrency limits reserve usage idempotently; failure/cancellation and period policies are recorded.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GROW-001",
+      "priority": "MUST",
+      "source_sections": [
+        "11",
+        "13"
+      ],
+      "milestone": "M7",
+      "title": "Subscription provenance and expiry",
+      "acceptance": "Approved packaging grants coach/mock/optional lab access while active; expiry removes only subscription-only grants.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GROW-002",
+      "priority": "MUST",
+      "source_sections": [
+        "11",
+        "13"
+      ],
+      "milestone": "M7",
+      "title": "Promotions/referrals and email lifecycle",
+      "acceptance": "Admin promos/referrals, receipts/welcome/reset/dunning and opt-in review reminders have retries/consent/unsubscribe checks.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GROW-003",
+      "priority": "MUST",
+      "source_sections": [
+        "12",
+        "13"
+      ],
+      "milestone": "M7",
+      "title": "SEO and analytics dashboards",
+      "acceptance": "Free visualizer landing pages and documented product-event dashboards are implemented without private-content leaks.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "GROW-004",
+      "priority": "MUST",
+      "source_sections": [
+        "6",
+        "12",
+        "13"
+      ],
+      "milestone": "M7",
+      "title": "Launch audits",
+      "acceptance": "WCAG 2.2 AA review and Lighthouse >=90 on recorded key-page profiles pass with findings closed or gate outstanding.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "SCALE-001",
+      "priority": "MUST",
+      "source_sections": [
+        "4",
+        "13"
+      ],
+      "milestone": "M8",
+      "title": "Sixty-plus reviewed labs and full curriculum tracking",
+      "acceptance": ">=60 published validated labs extend all four tracks; every \u00a74 topic is mapped to delivered content or explicitly tracked remaining scope.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "SCALE-002",
+      "priority": "MUST",
+      "source_sections": [
+        "5.1",
+        "13"
+      ],
+      "milestone": "M8",
+      "title": "More reference algorithms/code languages",
+      "acceptance": "Additional curriculum traces/languages retain tested final states, mapping, prediction and accessible renderer coverage.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "SCALE-003",
+      "priority": "LATER",
+      "source_sections": [
+        "2",
+        "13"
+      ],
+      "milestone": "M8",
+      "title": "Team seats deferred",
+      "acceptance": "Team admins/seats remain disabled and excluded from acceptance until separately activated.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "SCALE-004",
+      "priority": "LATER",
+      "source_sections": [
+        "3.1",
+        "5.4",
+        "14"
+      ],
+      "milestone": "M8",
+      "title": "Advanced and excluded capabilities",
+      "acceptance": "code-step/defend/mock-question/spoken modes remain deferred; native apps/user code execution/marketplace/recruiters remain out of v1.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-001",
+      "priority": "MUST",
+      "source_sections": [
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Identity/API security baseline",
+      "acceptance": "Plan OWASP ASVS level 2 controls: established hashing, CSRF/secure sessions/CSP, input/auth checks, least-privilege DB, managed secrets and dependency checks. Include signup bot protection and privacy-aware account-sharing signals; verify controls before public launch.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-002",
+      "priority": "MUST",
+      "source_sections": [
+        "6",
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Accessible and responsive from the start",
+      "acceptance": "Keyboard/focus/screen-reader/non-colour/reduced-motion and phone/tablet/desktop states are part of each feature, not postponed to M7.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-003",
+      "priority": "MUST",
+      "source_sections": [
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Privacy lifecycle",
+      "acceptance": "Data minimisation, no training opt-in by default, sensitive-log redaction and consent foundations precede real-user use; export/deletion lifecycle is verified before public pilot.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-004",
+      "priority": "MUST",
+      "source_sections": [
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Structured telemetry",
+      "acceptance": "Typed request/error/event schemas and traces are defined early; events cover completion/drop-off/hints as those features ship without raw learner secrets/content.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-005",
+      "priority": "MUST",
+      "source_sections": [
+        "12"
+      ],
+      "milestone": "M1",
+      "title": "Backups, migration and restore",
+      "acceptance": "Daily backup policy plus actual restore/migration/rollback evidence exists for the deployed environment.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-006",
+      "priority": "MUST",
+      "source_sections": [
+        "12"
+      ],
+      "milestone": "M7",
+      "title": "Performance and reliability targets",
+      "acceptance": "Record target phone/4G profile for <2.5-s meaningful paint; monitor 99.9% app target; coach failure degrades gracefully without claiming an unmeasured SLO.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    },
+    {
+      "id": "NFR-007",
+      "priority": "MUST",
+      "source_sections": [
+        "9",
+        "12",
+        "15"
+      ],
+      "milestone": "M1",
+      "title": "All endpoints typed/limited/authorised and all features tested",
+      "acceptance": "Applicable unit/E2E, rate limits, safe errors and server ownership checks accompany each milestone's endpoints and evidence.",
+      "verification": "Independent QA maps concrete test, review and environment artifacts to this criterion; later-milestone continuations remain open until verified."
+    }
+  ]
+}

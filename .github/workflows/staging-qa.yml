@@ -1,0 +1,104 @@
+name: SDLC - Staging QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Infrastructure checks are runnable now; staging needs a configured real deployment
+        type: choice
+        options: [infrastructure, staging]
+        default: infrastructure
+        required: true
+      task-id:
+        description: Queued QA task ID, if running an agent assessment
+        type: string
+      revision:
+        description: Exact integrated 40-character commit to verify
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: sdlc-ledger
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      vars.SDLC_ENABLED == 'true' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      (contains(fromJSON(vars.SDLC_TRUSTED_ACTORS || '[]'), github.actor) ||
+      github.actor == 'github-actions[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    env:
+      SDLC_SCOPE: ${{ inputs.scope }}
+      SDLC_TASK_ID: ${{ inputs.task-id || '' }}
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+      SDLC_STAGING_URL: ${{ vars.SDLC_STAGING_URL }}
+      SDLC_OUTPUT_DIR: .sdlc/output
+    steps:
+      - name: Check out trusted default-branch controller
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Restore signed ledger
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action restore
+      - name: Record QA request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m automation.cli event --event-name "$GITHUB_EVENT_NAME" --event-path "$GITHUB_EVENT_PATH"
+      - name: Run requested validation without GitHub/model credentials
+        id: validate
+        continue-on-error: true
+        run: python -m automation.cli validate --scope "$SDLC_SCOPE" --revision "$SDLC_TARGET_REVISION"
+      - name: Build trusted QA execution image
+        if: env.SDLC_TASK_ID != ''
+        run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+      - name: Run queued Codex QA assessment when present
+        if: env.SDLC_TASK_ID != ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: >-
+          python -m automation.cli worker
+          --role qa
+          --task-id "$SDLC_TASK_ID"
+          --revision "$SDLC_TARGET_REVISION"
+          --event-path "$GITHUB_EVENT_PATH"
+      - name: Reconcile QA evidence and create policy-qualified bug tickets
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
+        run: python -m automation.cli reconcile --event-path "$GITHUB_EVENT_PATH"
+      - name: Save signed ledger
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action save
+      - name: Retain QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdlc-qa-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .sdlc/output/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Preserve failed or blocked validation as a failed workflow
+        if: always() && steps.validate.outcome != 'success'
+        run: exit 1

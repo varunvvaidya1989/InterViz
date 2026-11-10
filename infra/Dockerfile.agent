@@ -1,0 +1,14 @@
+FROM node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+
+ARG CODEX_VERSION=0.167.0
+ARG CLAUDE_VERSION=2.1.322
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git python3 ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global @openai/codex@${CODEX_VERSION} @anthropic-ai/claude-code@${CLAUDE_VERSION} \
+    && npm cache clean --force
+
+USER node
+WORKDIR /workspace
+ENV PYTHONDONTWRITEBYTECODE=1
+CMD ["python3", "-m", "automation.cli", "doctor", "--format", "json"]

@@ -1,0 +1,118 @@
+name: SDLC - Agent control
+
+on:
+  issues:
+    types: [opened, edited, labeled, reopened]
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Trusted controller action; reconcile schedules ready ledger tasks
+        type: choice
+        options: [event, reconcile, worker, provider-check]
+        default: reconcile
+        required: true
+      role:
+        description: Worker role; ignored unless action is worker
+        type: choice
+        options: [lead, coding, ui-ux, devops, review, qa]
+        default: lead
+      task-id:
+        description: Existing queued task ID; never a free-form instruction
+        type: string
+      revision:
+        description: Exact 40-character target commit; required by worker policy
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: sdlc-ledger
+  cancel-in-progress: false
+
+jobs:
+  control:
+    if: >-
+      vars.SDLC_ENABLED == 'true' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      (github.event_name == 'schedule' ||
+      contains(fromJSON(vars.SDLC_TRUSTED_ACTORS || '[]'), github.actor) ||
+      (github.event_name == 'workflow_dispatch' && github.actor == 'github-actions[bot]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+      checks: write
+    env:
+      SDLC_ACTION: ${{ inputs.action || (github.event_name == 'schedule' && 'reconcile') || 'event' }}
+      SDLC_ROLE: ${{ inputs.role || 'lead' }}
+      SDLC_TASK_ID: ${{ inputs.task-id || '' }}
+      SDLC_TARGET_REVISION: ${{ inputs.revision || '' }}
+      SDLC_OUTPUT_DIR: .sdlc/output
+    steps:
+      - name: Check out trusted default-branch controller only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Restore authenticated controller ledger
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action restore
+      - name: Ingest trusted actor event
+        if: env.SDLC_ACTION == 'event'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m automation.cli event --event-name "$GITHUB_EVENT_NAME" --event-path "$GITHUB_EVENT_PATH"
+      - name: Build trusted worker execution image
+        if: env.SDLC_ACTION == 'worker'
+        run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+      - name: Execute queued Codex worker through isolated adapter
+        if: env.SDLC_ACTION == 'worker'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: >-
+          python -m automation.cli worker
+          --role "$SDLC_ROLE"
+          --task-id "$SDLC_TASK_ID"
+          --revision "$SDLC_TARGET_REVISION"
+          --event-path "$GITHUB_EVENT_PATH"
+      - name: Minimal provider connectivity verification
+        if: env.SDLC_ACTION == 'provider-check'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
+          python -m automation.cli probe
+      - name: Reconcile policy and schedule permitted next work
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m automation.cli reconcile --event-path "$GITHUB_EVENT_PATH"
+      - name: Save signed ledger with compare-and-swap
+        if: always() && steps.restore.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDLC_STATE_SIGNING_KEY: ${{ secrets.SDLC_STATE_SIGNING_KEY }}
+        run: python -m automation.cli state --action save
+      - name: Retain non-secret run evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdlc-control-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .sdlc/output/
+          if-no-files-found: ignore
+          retention-days: 7

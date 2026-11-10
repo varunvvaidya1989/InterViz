@@ -1,0 +1,12 @@
+.git
+.sdlc
+.tools
+.env
+.env.*
+!.env.example
+docs/**/*.pdf
+data
+artifacts
+node_modules
+**/__pycache__
+.venv

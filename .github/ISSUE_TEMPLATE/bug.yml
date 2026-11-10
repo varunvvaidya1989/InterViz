@@ -1,0 +1,58 @@
+name: QA defect
+description: Record a reproducible failure against a specific revision and requirement.
+title: '[Bug] '
+labels: ['sdlc:bug']
+body:
+  - type: input
+    id: task-id
+    attributes:
+      label: Related task or QA run
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Exact tested commit
+      description: Use the complete commit SHA. A branch name is insufficient.
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options: [infrastructure-ci, preview, staging, production]
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Proposed severity
+      options: [release-blocking, major, minor, needs-triage]
+    validations:
+      required: true
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Requirement and expected result
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed result
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Give deterministic inputs and relevant versions; redact private user content and credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence artifacts and retest result
+      description: Link logs/screenshots by run and artifact ID. Distinguish actual provider calls from fixtures.
+    validations:
+      required: true

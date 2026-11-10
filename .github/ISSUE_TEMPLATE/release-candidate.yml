@@ -1,0 +1,62 @@
+name: Founder release candidate
+description: Assemble exact-revision evidence for founder approval before publication.
+title: '[Release candidate] '
+labels: ['sdlc:release-candidate']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Opening this issue does not approve a release. Publication requires the configured founder's approval of this candidate ID, exact commit, and manifest hash via `/sdlc approve-release R SHA MANIFEST_HASH`, passing CI, independent review, and applicable QA evidence. Infrastructure release evidence does not establish a SaaS application deployment.
+  - type: input
+    id: candidate-id
+    attributes:
+      label: Candidate ID
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Exact integrated commit
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: Release scope
+      options: [INFRA, M1, M2, M3, M4, M5, M6, M7, M8]
+    validations:
+      required: true
+  - type: input
+    id: manifest-hash
+    attributes:
+      label: Candidate manifest hash
+      description: Use the exact manifest hash produced by candidate assembly; approval is invalid after the manifest changes.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: CI, independent review, and QA evidence
+      description: Link exact-commit run IDs, review verdicts, bounded debate resolutions, and staging evidence where applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: changelog
+    attributes:
+      label: Proposed changelog and known limitations
+      description: Include blocked/unverified integrations and distinguish infrastructure from product readiness.
+    validations:
+      required: true
+  - type: textarea
+    id: recovery
+    attributes:
+      label: Release procedure and rollback/recovery
+    validations:
+      required: true
+  - type: checkboxes
+    id: proposal-only
+    attributes:
+      label: Candidate acknowledgement
+      options:
+        - label: This issue is a candidate proposal; only the explicit exact-candidate founder approval can authorise publication.
+          required: true

@@ -1,0 +1,457 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Systems Labs agent task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "milestone",
+    "role",
+    "title",
+    "status",
+    "depends_on",
+    "requirements",
+    "allowed_paths",
+    "acceptance",
+    "deliverables",
+    "required_evidence",
+    "reviewers",
+    "entry_gates",
+    "shared_write_policy"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^M[1-8]-(LEAD|OPS|UX|CODE|CONTENT|QA)-[0-9]{3}$"
+    },
+    "milestone": {
+      "type": "string",
+      "enum": [
+        "M1",
+        "M2",
+        "M3",
+        "M4",
+        "M5",
+        "M6",
+        "M7",
+        "M8"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "lead",
+        "ui-ux",
+        "coding",
+        "devops",
+        "qa",
+        "content"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 10
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PLANNED",
+        "READY",
+        "RUNNING",
+        "SUBMITTED",
+        "REVIEWING",
+        "ACCEPTED",
+        "INTEGRATED",
+        "STAGING_VERIFIED",
+        "REWORK",
+        "NEEDS_INPUT",
+        "INTERRUPTED",
+        "CANCELLED"
+      ]
+    },
+    "depends_on": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "requirements": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "allowed_paths": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "acceptance": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 15
+      }
+    },
+    "deliverables": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "required_evidence": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "reviewers": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "entry_gates": {
+      "$ref": "#/$defs/nonemptyArray"
+    },
+    "shared_write_policy": {
+      "type": "string",
+      "minLength": 20
+    },
+    "execution": {
+      "$ref": "#/$defs/execution"
+    },
+    "handoff": {
+      "$ref": "#/$defs/handoff"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "READY",
+              "RUNNING",
+              "SUBMITTED",
+              "REVIEWING",
+              "ACCEPTED",
+              "INTEGRATED",
+              "STAGING_VERIFIED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "SUBMITTED",
+              "REVIEWING",
+              "ACCEPTED",
+              "INTEGRATED",
+              "STAGING_VERIFIED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "handoff"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "execution"
+        ],
+        "properties": {
+          "execution": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "bootstrap"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "enum": [
+              "M1-LEAD-001",
+              "M1-OPS-001"
+            ]
+          },
+          "handoff": {
+            "required": [
+              "artifact_outputs"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "execution",
+          "handoff"
+        ],
+        "properties": {
+          "execution": {
+            "properties": {
+              "mode": {
+                "const": "worktree"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "handoff": {
+            "required": [
+              "submitted_commit"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "execution",
+          "handoff"
+        ],
+        "properties": {
+          "id": {
+            "const": "M1-OPS-001"
+          },
+          "execution": {
+            "properties": {
+              "mode": {
+                "const": "bootstrap"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "handoff": {
+            "required": [
+              "submitted_commit",
+              "artifact_outputs"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "nonemptyArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "lease_id",
+        "spec_sha256",
+        "model",
+        "exclusive_files",
+        "limits",
+        "mode"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lease_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_commit": {
+          "type": "string",
+          "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "spec_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exclusive_files": {
+          "$ref": "#/$defs/nonemptyArray"
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_attempts",
+            "max_minutes",
+            "max_model_tokens",
+            "max_cost"
+          ],
+          "properties": {
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "max_minutes": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "max_model_tokens": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_cost": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "mode": {
+          "enum": [
+            "worktree",
+            "bootstrap"
+          ]
+        },
+        "artifact_inputs": {
+          "type": "object",
+          "minProperties": 2,
+          "required": [
+            "planning/Systems Labs Product Specification.md",
+            "docs/plans/M1.md"
+          ],
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "bootstrap_reason": {
+          "type": "string",
+          "minLength": 20
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "worktree"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "base_commit",
+              "worktree"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "bootstrap"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "artifact_inputs",
+              "bootstrap_reason"
+            ]
+          }
+        }
+      ]
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "changed_paths",
+        "evidence",
+        "limitations"
+      ],
+      "properties": {
+        "submitted_commit": {
+          "type": "string",
+          "pattern": "^([a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 15
+        },
+        "changed_paths": {
+          "$ref": "#/$defs/nonemptyArray"
+        },
+        "limitations": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "criterion",
+              "result",
+              "artifact",
+              "revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "criterion": {
+                "type": "string"
+              },
+              "result": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "NOT_RUN",
+                  "OUTSTANDING"
+                ]
+              },
+              "artifact": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "artifact_outputs": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

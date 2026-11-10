@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111e27"><meta name="description" content="Explore your interview knowledge base with cited search, grounded tutoring, and interview practice.">
+  <title>EnterView — Your interview knowledge workspace</title>
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="knowledge.css">
+  <script src="knowledge.js" defer></script>
+</head>
+<body class="knowledge-page">
+  <aside class="sidebar">
+    <a class="brand" href="knowledge.html"><span class="brand-mark">e<span>v</span></span>EnterView<span class="brand-dot">.</span></a>
+    <div class="workspace-label">YOUR INTERVIEW KNOWLEDGE BASE</div>
+    <nav class="workspace-nav" aria-label="Workspace"><a href="learning.html">▦ &nbsp; Guided labs & learning paths</a><a class="active" href="knowledge.html">⌕ &nbsp; Source research workspace</a><a href="index.html">⇄ &nbsp; Animated concept labs <small>3 labs</small></a></nav>
+    <div class="nav-heading">LEARNING TRACKS</div>
+    <div class="track-list" id="track-list"><button data-track="" class="selected" aria-pressed="true">All disciplines <span>↗</span></button><button data-track="backend" aria-pressed="false">Backend engineering</button><button data-track="system-design" aria-pressed="false">System design</button><button data-track="low-level-design" aria-pressed="false">Low-level design</button><button data-track="devops" aria-pressed="false">DevOps & production</button><button data-track="ai-engineering" aria-pressed="false">AI engineering</button></div>
+    <button id="toggle-sources" class="mobile-sources" aria-expanded="false" aria-controls="document-filters">Select source documents ↓</button>
+    <div class="source-heading"><span class="nav-heading">SOURCE DOCUMENTS</span><button id="select-all" class="mini-action">Select all</button></div>
+    <div id="document-filters" class="document-filters"><p>Connecting to your library…</p></div>
+    <div class="knowledge-sidebar-bottom"><span class="status-dot"></span><span id="connection-state">Checking local index</span><small>Local prototype</small></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>THE INTERVIEW WORKSPACE <span class="topbar-slash">/</span><span id="breadcrumb">Knowledge into understanding</span></span><a href="#documents" class="quiet">Browse sources ↗</a></header>
+    <div class="page-content knowledge-content">
+      <div class="lesson-topline"><span class="eyebrow">READ LESS PASSIVELY. PRACTISE MORE DELIBERATELY.</span><span class="pill" id="tutor-badge">Connecting…</span></div>
+      <h1>Your next round<br>starts with understanding.</h1>
+      <p class="intro">Connect the ideas across your interview guides. Ask why, work through a scenario, and trace the answer back to its source.</p>
+      <div class="corpus-stats" id="corpus-stats" aria-live="polite"><span>Loading your knowledge base…</span></div>
+      <div id="setup-message" class="setup-message" hidden></div>
+      <section class="ask-workspace" aria-labelledby="workspace-title">
+        <div class="ask-heading"><div><span class="eyebrow">YOUR LEARNING DESK</span><h2 id="workspace-title">What would you like to work through?</h2></div><button class="text-button" id="new-session">New session ↺</button></div>
+        <div class="learning-modes" role="group" aria-label="Learning mode"><button data-mode="explain" class="selected" aria-pressed="true">✦ Explain</button><button data-mode="practice" aria-pressed="false">↳ Interview me</button><button data-mode="review" aria-pressed="false">✓ Review my answer</button><button data-mode="plan" aria-pressed="false">≋ Learning path</button><button data-mode="search" aria-pressed="false">⌕ Search sources</button></div>
+        <p id="mode-description" class="mode-description">Get a grounded explanation with trade-offs, failure modes, and a question to test yourself.</p>
+        <form id="ask-form"><label class="sr-only" for="question">Question or topic</label><textarea id="question" rows="3" maxlength="2000" required placeholder="Why can a Redis cache make an outage worse, and how would I defend the design in an interview?"></textarea><div id="answer-field" hidden><label class="input-label" for="student-answer">Your answer (include what you would do and why)</label><textarea id="student-answer" rows="5" maxlength="10000" placeholder="Write your own answer here. Use real experience; don’t copy a model story."></textarea></div><div class="ask-form-bottom"><span id="scope-summary">All selected documents · page-level evidence</span><button class="primary" id="submit-question" type="submit">Ask tutor ↗</button></div></form>
+        <div class="suggested-prompts"><span>START WITH A QUESTION</span><button data-prompt="How do I handle cache stampedes and stale values?">Caching under pressure ↗</button><button data-prompt="Help me explain a production incident with clear personal ownership and measurable outcomes.">Defend your ownership ↗</button><button data-prompt="How should I design and evaluate a production RAG pipeline?">RAG beyond the tutorial ↗</button><button data-prompt="What trade-offs matter when designing a parking lot with SOLID principles?">From SOLID to a design ↗</button></div>
+      </section>
+      <div class="privacy-note"><span>◈</span><p>Search runs locally. Tutor requests send selected retrieved passages and this session’s messages to the hosted model. Student answers stay in this browser session and are not saved by this app. Provider retention follows your API account’s terms.</p></div>
+      <div id="request-status" role="status" aria-live="polite"></div>
+      <section id="conversation" aria-label="Tutor conversation"></section>
+      <section id="search-results" aria-labelledby="results-heading" hidden><div class="section-title"><div><span class="eyebrow">FROM YOUR DOCUMENTS</span><h2 id="results-heading">Retrieved evidence</h2></div><span class="subtle" id="result-count"></span></div><div id="result-list"></div></section>
+      <section id="documents" class="document-section" aria-labelledby="documents-title"><div class="section-title"><div><span class="eyebrow">THE MATERIAL BEHIND THE ANSWERS</span><h2 id="documents-title">Your interview library.</h2></div><span class="subtle">Original PDFs remain unchanged</span></div><div id="document-cards" class="document-cards"></div><div class="coverage-note"><strong>A note on coverage</strong><p>The current collection covers backend, HLD, LLD, DevOps, AI engineering, and some behavioural practice. A dedicated salary-negotiation guide has not been identified. Diagrams and tables need visual review; text retrieval does not fully interpret them.</p></div></section>
+      <footer class="page-footer"><span>FOLLOW THE EVIDENCE. PRACTISE THE REASONING.</span><a href="index.html" class="text-button">Open animated labs →</a></footer>
+    </div>
+  </main>
+</body>
+</html>

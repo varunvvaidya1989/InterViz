@@ -1,0 +1,1010 @@
+{
+  "built_at": "2026-11-03T06:22:12.344955+00:00",
+  "retrieval": "SQLite FTS5 BM25 with title weighting, query expansion and page diversification; no dense embeddings yet",
+  "totals": {
+    "documents": 7,
+    "pages": 579,
+    "chunks": 985,
+    "units": 132,
+    "questions": 374,
+    "words": 298519
+  },
+  "documents": [
+    {
+      "id": "9f89365d0d5d4427",
+      "title": "DevOps Interview Playbook",
+      "path": "docs/backend-engg/0313dad636ce7a70f40d7b261cf8426c9373a14d9dc9d3aa.pdf",
+      "track": "devops",
+      "kind": "guide",
+      "sha256": "1ad601e4b841a64700212588781ff58b7c9e1212d368212776c756362044cba8",
+      "pages": 123,
+      "units": [
+        {
+          "number": 1,
+          "title": "Project and ownership deep dives",
+          "page": 3,
+          "end": 12
+        },
+        {
+          "number": 2,
+          "title": "Linux and systems troubleshooting",
+          "page": 13,
+          "end": 22
+        },
+        {
+          "number": 3,
+          "title": "Networking, DNS and traffic management",
+          "page": 23,
+          "end": 32
+        },
+        {
+          "number": 4,
+          "title": "CI/CD and release engineering",
+          "page": 33,
+          "end": 42
+        },
+        {
+          "number": 5,
+          "title": "Containers and image lifecycle",
+          "page": 43,
+          "end": 52
+        },
+        {
+          "number": 6,
+          "title": "Container orchestration and Kubernetes operations",
+          "page": 53,
+          "end": 62
+        },
+        {
+          "number": 7,
+          "title": "Infrastructure as Code, configuration management and GitOps",
+          "page": 63,
+          "end": 72
+        },
+        {
+          "number": 8,
+          "title": "AWS architecture and operations",
+          "page": 73,
+          "end": 82
+        },
+        {
+          "number": 9,
+          "title": "Observability, SRE and capacity management",
+          "page": 83,
+          "end": 92
+        },
+        {
+          "number": 10,
+          "title": "Incident response, resilience and disaster recovery",
+          "page": 93,
+          "end": 102
+        },
+        {
+          "number": 11,
+          "title": "DevSecOps and software-supply-chain security",
+          "page": 103,
+          "end": 112
+        },
+        {
+          "number": 12,
+          "title": "Platform engineering and system design",
+          "page": 113,
+          "end": 122
+        }
+      ],
+      "questions": 108,
+      "chunks": 129,
+      "text_pages": 123,
+      "words": 43819,
+      "low_text_pages": []
+    },
+    {
+      "id": "7bb21d764e18bfd9",
+      "title": "Software Engineer to AI Engineer Interview Guide",
+      "path": "docs/backend-engg/ac4051c9aa34c0845b804f62151cedbed83ad759672bc9fe.pdf",
+      "track": "ai-engineering",
+      "kind": "guide",
+      "sha256": "6a26f76832ccd8129e7ba47e10ce21e8d069a697a15a2361368d9bd86d34c9ec",
+      "pages": 176,
+      "units": [
+        {
+          "number": 1,
+          "title": "Making the switch credible",
+          "page": 3,
+          "end": 12
+        },
+        {
+          "number": 2,
+          "title": "The project you can defend",
+          "page": 13,
+          "end": 22
+        },
+        {
+          "number": 3,
+          "title": "LLM fundamentals",
+          "page": 23,
+          "end": 35
+        },
+        {
+          "number": 4,
+          "title": "Model selection and adaptation",
+          "page": 36,
+          "end": 49
+        },
+        {
+          "number": 5,
+          "title": "Prompt and context engineering",
+          "page": 50,
+          "end": 59
+        },
+        {
+          "number": 6,
+          "title": "Retrieval and RAG architecture",
+          "page": 60,
+          "end": 75
+        },
+        {
+          "number": 7,
+          "title": "RAG quality and failure diagnosis",
+          "page": 76,
+          "end": 85
+        },
+        {
+          "number": 8,
+          "title": "Evaluation and testing",
+          "page": 86,
+          "end": 99
+        },
+        {
+          "number": 9,
+          "title": "Agents and tool use",
+          "page": 100,
+          "end": 109
+        },
+        {
+          "number": 10,
+          "title": "AI product reliability and human oversight",
+          "page": 110,
+          "end": 120
+        },
+        {
+          "number": 11,
+          "title": "Voice AI",
+          "page": 121,
+          "end": 134
+        },
+        {
+          "number": 12,
+          "title": "Cost, latency and scalability",
+          "page": 135,
+          "end": 144
+        },
+        {
+          "number": 13,
+          "title": "Security, privacy and safety",
+          "page": 145,
+          "end": 154
+        },
+        {
+          "number": 14,
+          "title": "LLMOps, monitoring and deployment",
+          "page": 155,
+          "end": 164
+        },
+        {
+          "number": 15,
+          "title": "GenAI system-design exercises",
+          "page": 165,
+          "end": 175
+        }
+      ],
+      "questions": 158,
+      "chunks": 312,
+      "text_pages": 176,
+      "words": 77712,
+      "low_text_pages": []
+    },
+    {
+      "id": "14756e5914612074",
+      "title": "Backend Interview Playbook",
+      "path": "docs/backend-engg/backend-interview-guide-2026-18-09-10-54-51.pdf",
+      "track": "backend",
+      "kind": "guide",
+      "sha256": "555cef0caa0fdbdac42c3e20216e1474322f1faf9ccad274e6a2db3e1b3aeab5",
+      "pages": 123,
+      "units": [
+        {
+          "number": 1,
+          "title": "Project and ownership deep dives",
+          "page": 3,
+          "end": 12
+        },
+        {
+          "number": 2,
+          "title": "API design and integration",
+          "page": 13,
+          "end": 22
+        },
+        {
+          "number": 3,
+          "title": "Databases and transactions",
+          "page": 23,
+          "end": 32
+        },
+        {
+          "number": 4,
+          "title": "Kafka, queues and asynchronous processing",
+          "page": 33,
+          "end": 42
+        },
+        {
+          "number": 5,
+          "title": "Redis and caching",
+          "page": 43,
+          "end": 52
+        },
+        {
+          "number": 6,
+          "title": "Distributed systems and microservices",
+          "page": 53,
+          "end": 62
+        },
+        {
+          "number": 7,
+          "title": "Reliability and resilience",
+          "page": 63,
+          "end": 72
+        },
+        {
+          "number": 8,
+          "title": "Production incidents and debugging",
+          "page": 73,
+          "end": 82
+        },
+        {
+          "number": 9,
+          "title": "Observability and deployment",
+          "page": 83,
+          "end": 92
+        },
+        {
+          "number": 10,
+          "title": "Security and data protection",
+          "page": 93,
+          "end": 102
+        },
+        {
+          "number": 11,
+          "title": "System design (the blank-page round)",
+          "page": 103,
+          "end": 112
+        },
+        {
+          "number": 12,
+          "title": "Behavioural and managerial rounds",
+          "page": 113,
+          "end": 122
+        }
+      ],
+      "questions": 108,
+      "chunks": 130,
+      "text_pages": 123,
+      "words": 45837,
+      "low_text_pages": []
+    },
+    {
+      "id": "c22ab40b44fff1fb",
+      "title": "High-Level Design Problems",
+      "path": "docs/backend-engg/hld-interview-problems-2026-12-09-06-25-0.pdf",
+      "track": "system-design",
+      "kind": "problems",
+      "sha256": "d84f98d60b9990ec3a6e128a4d0c1205470a0b2a9e784d57f8b78414835a6f11",
+      "pages": 51,
+      "units": [
+        {
+          "number": 1,
+          "title": "Design a URL Shortener",
+          "page": 3,
+          "end": 5
+        },
+        {
+          "number": 2,
+          "title": "Design a News Feed",
+          "page": 6,
+          "end": 8
+        },
+        {
+          "number": 3,
+          "title": "Design a Chat App",
+          "page": 9,
+          "end": 11
+        },
+        {
+          "number": 4,
+          "title": "Design Ride-Hailing & Delivery Matching",
+          "page": 12,
+          "end": 14
+        },
+        {
+          "number": 5,
+          "title": "Design a Rate Limiter",
+          "page": 15,
+          "end": 17
+        },
+        {
+          "number": 6,
+          "title": "Design a Notification Service",
+          "page": 18,
+          "end": 20
+        },
+        {
+          "number": 7,
+          "title": "Design a Video Streaming Service",
+          "page": 21,
+          "end": 23
+        },
+        {
+          "number": 8,
+          "title": "Design a Ticket Booking System",
+          "page": 24,
+          "end": 26
+        },
+        {
+          "number": 9,
+          "title": "Design a Typeahead Service",
+          "page": 27,
+          "end": 29
+        },
+        {
+          "number": 10,
+          "title": "Design a Web Crawler",
+          "page": 30,
+          "end": 32
+        },
+        {
+          "number": 11,
+          "title": "Design a File Sync Service",
+          "page": 33,
+          "end": 35
+        },
+        {
+          "number": 12,
+          "title": "Design a Payment System",
+          "page": 36,
+          "end": 38
+        },
+        {
+          "number": 13,
+          "title": "Design an Ad Click Aggregator",
+          "page": 39,
+          "end": 41
+        },
+        {
+          "number": 14,
+          "title": "Design a Job Scheduler",
+          "page": 42,
+          "end": 44
+        },
+        {
+          "number": 15,
+          "title": "Design a Search System",
+          "page": 45,
+          "end": 47
+        },
+        {
+          "number": 16,
+          "title": "Design a Trading System",
+          "page": 48,
+          "end": 50
+        }
+      ],
+      "questions": 0,
+      "chunks": 155,
+      "text_pages": 51,
+      "words": 50326,
+      "low_text_pages": []
+    },
+    {
+      "id": "3ef86211d900c2e9",
+      "title": "LLD Core Concepts",
+      "path": "docs/backend-engg/lld-core-concepts-2026-12-09-06-25-0.pdf",
+      "track": "low-level-design",
+      "kind": "concepts",
+      "sha256": "87ff059cac57939a7b54dd90ab24edfc2882bc9b3475d18bce6f05d60ea3af48",
+      "pages": 24,
+      "units": [
+        {
+          "number": 1,
+          "title": "Coupling & Cohesion",
+          "page": 3,
+          "end": 3
+        },
+        {
+          "number": 2,
+          "title": "SOLID Principles",
+          "page": 4,
+          "end": 4
+        },
+        {
+          "number": 3,
+          "title": "DRY",
+          "page": 5,
+          "end": 5
+        },
+        {
+          "number": 4,
+          "title": "YAGNI",
+          "page": 6,
+          "end": 6
+        },
+        {
+          "number": 5,
+          "title": "KISS",
+          "page": 7,
+          "end": 7
+        },
+        {
+          "number": 6,
+          "title": "Composition vs Inheritance",
+          "page": 8,
+          "end": 8
+        },
+        {
+          "number": 7,
+          "title": "Interface vs Abstract Class",
+          "page": 9,
+          "end": 9
+        },
+        {
+          "number": 8,
+          "title": "Association, Aggregation, Composition",
+          "page": 10,
+          "end": 10
+        },
+        {
+          "number": 9,
+          "title": "How to Approach Any LLD Problem",
+          "page": 11,
+          "end": 11
+        },
+        {
+          "number": 10,
+          "title": "Factory Method",
+          "page": 12,
+          "end": 12
+        },
+        {
+          "number": 11,
+          "title": "Builder",
+          "page": 13,
+          "end": 13
+        },
+        {
+          "number": 12,
+          "title": "Singleton",
+          "page": 14,
+          "end": 14
+        },
+        {
+          "number": 13,
+          "title": "Adapter",
+          "page": 15,
+          "end": 15
+        },
+        {
+          "number": 14,
+          "title": "Decorator",
+          "page": 16,
+          "end": 16
+        },
+        {
+          "number": 15,
+          "title": "Composite",
+          "page": 17,
+          "end": 17
+        },
+        {
+          "number": 16,
+          "title": "Strategy",
+          "page": 18,
+          "end": 18
+        },
+        {
+          "number": 17,
+          "title": "Observer",
+          "page": 19,
+          "end": 19
+        },
+        {
+          "number": 18,
+          "title": "State",
+          "page": 20,
+          "end": 20
+        },
+        {
+          "number": 19,
+          "title": "Command",
+          "page": 21,
+          "end": 21
+        },
+        {
+          "number": 20,
+          "title": "Chain of Responsibility",
+          "page": 22,
+          "end": 22
+        },
+        {
+          "number": 21,
+          "title": "Template Method",
+          "page": 23,
+          "end": 23
+        }
+      ],
+      "questions": 0,
+      "chunks": 51,
+      "text_pages": 24,
+      "words": 16874,
+      "low_text_pages": []
+    },
+    {
+      "id": "c332026593fae51c",
+      "title": "Low-Level Design Problems",
+      "path": "docs/backend-engg/lld-design-problems-2026-12-09-06-25-0.pdf",
+      "track": "low-level-design",
+      "kind": "problems",
+      "sha256": "5a39a5939201b799653e47540a191a8826d38c5f89d42484c5d7fb63fc16ab45",
+      "pages": 43,
+      "units": [
+        {
+          "number": 1,
+          "title": "Parking Lot",
+          "page": 3,
+          "end": 4
+        },
+        {
+          "number": 2,
+          "title": "Vending Machine",
+          "page": 5,
+          "end": 6
+        },
+        {
+          "number": 3,
+          "title": "Elevator System",
+          "page": 7,
+          "end": 8
+        },
+        {
+          "number": 4,
+          "title": "ATM",
+          "page": 9,
+          "end": 10
+        },
+        {
+          "number": 5,
+          "title": "Coffee Machine",
+          "page": 11,
+          "end": 12
+        },
+        {
+          "number": 6,
+          "title": "Chess",
+          "page": 13,
+          "end": 14
+        },
+        {
+          "number": 7,
+          "title": "Tic-Tac-Toe",
+          "page": 15,
+          "end": 16
+        },
+        {
+          "number": 8,
+          "title": "Snake and Ladder",
+          "page": 17,
+          "end": 18
+        },
+        {
+          "number": 9,
+          "title": "Movie Ticket Booking",
+          "page": 19,
+          "end": 20
+        },
+        {
+          "number": 10,
+          "title": "Hotel Management",
+          "page": 21,
+          "end": 22
+        },
+        {
+          "number": 11,
+          "title": "Car Rental",
+          "page": 23,
+          "end": 24
+        },
+        {
+          "number": 12,
+          "title": "Library Management",
+          "page": 25,
+          "end": 26
+        },
+        {
+          "number": 13,
+          "title": "Splitwise",
+          "page": 27,
+          "end": 28
+        },
+        {
+          "number": 14,
+          "title": "Digital Wallet",
+          "page": 29,
+          "end": 30
+        },
+        {
+          "number": 15,
+          "title": "LRU Cache",
+          "page": 31,
+          "end": 32
+        },
+        {
+          "number": 16,
+          "title": "In-Memory File System",
+          "page": 33,
+          "end": 34
+        },
+        {
+          "number": 17,
+          "title": "Text Editor",
+          "page": 35,
+          "end": 36
+        },
+        {
+          "number": 18,
+          "title": "Logging",
+          "page": 37,
+          "end": 38
+        },
+        {
+          "number": 19,
+          "title": "Notification Service",
+          "page": 39,
+          "end": 40
+        },
+        {
+          "number": 20,
+          "title": "Pub-Sub",
+          "page": 41,
+          "end": 42
+        }
+      ],
+      "questions": 0,
+      "chunks": 137,
+      "text_pages": 43,
+      "words": 45051,
+      "low_text_pages": []
+    },
+    {
+      "id": "295d75b0bb769bed",
+      "title": "System Design Core Concepts",
+      "path": "docs/backend-engg/system-design-core-concepts-2026-12-09-06-25-0.pdf",
+      "track": "system-design",
+      "kind": "concepts",
+      "sha256": "9f2695e108166ced0fec3202ba5ae720839bfe4690218a3b4f57cbbc3cec7eb0",
+      "pages": 39,
+      "units": [
+        {
+          "number": 1,
+          "title": "Vertical Scaling",
+          "page": 3,
+          "end": 3
+        },
+        {
+          "number": 2,
+          "title": "Horizontal Scaling",
+          "page": 4,
+          "end": 4
+        },
+        {
+          "number": 3,
+          "title": "Load Balancing",
+          "page": 5,
+          "end": 5
+        },
+        {
+          "number": 4,
+          "title": "Sharding / Partitioning",
+          "page": 6,
+          "end": 6
+        },
+        {
+          "number": 5,
+          "title": "Replication",
+          "page": 7,
+          "end": 7
+        },
+        {
+          "number": 6,
+          "title": "Stateless vs Stateful Services",
+          "page": 8,
+          "end": 8
+        },
+        {
+          "number": 7,
+          "title": "Monolith vs N-Tier vs Microservices",
+          "page": 9,
+          "end": 9
+        },
+        {
+          "number": 8,
+          "title": "SQL vs NoSQL",
+          "page": 10,
+          "end": 10
+        },
+        {
+          "number": 9,
+          "title": "Caching",
+          "page": 11,
+          "end": 11
+        },
+        {
+          "number": 10,
+          "title": "Indexing",
+          "page": 12,
+          "end": 12
+        },
+        {
+          "number": 11,
+          "title": "Consistent Hashing",
+          "page": 13,
+          "end": 13
+        },
+        {
+          "number": 12,
+          "title": "ACID Transactions & Isolation",
+          "page": 14,
+          "end": 14
+        },
+        {
+          "number": 13,
+          "title": "Write-Ahead Log",
+          "page": 15,
+          "end": 15
+        },
+        {
+          "number": 14,
+          "title": "Object vs Block vs File Storage",
+          "page": 16,
+          "end": 16
+        },
+        {
+          "number": 15,
+          "title": "Database Connection Pooling",
+          "page": 17,
+          "end": 17
+        },
+        {
+          "number": 16,
+          "title": "DNS Resolution",
+          "page": 18,
+          "end": 18
+        },
+        {
+          "number": 17,
+          "title": "CDN & Edge Caching",
+          "page": 19,
+          "end": 19
+        },
+        {
+          "number": 18,
+          "title": "HTTP/1.1 vs HTTP/2 vs HTTP/3",
+          "page": 20,
+          "end": 20
+        },
+        {
+          "number": 19,
+          "title": "Service Discovery",
+          "page": 21,
+          "end": 21
+        },
+        {
+          "number": 20,
+          "title": "Real-Time Communication",
+          "page": 22,
+          "end": 22
+        },
+        {
+          "number": 21,
+          "title": "API Gateway / Reverse Proxy",
+          "page": 23,
+          "end": 23
+        },
+        {
+          "number": 22,
+          "title": "CAP Theorem",
+          "page": 24,
+          "end": 24
+        },
+        {
+          "number": 23,
+          "title": "Consistency Models",
+          "page": 25,
+          "end": 25
+        },
+        {
+          "number": 24,
+          "title": "Consensus (Paxos, Raft)",
+          "page": 26,
+          "end": 26
+        },
+        {
+          "number": 25,
+          "title": "Distributed Locks",
+          "page": 27,
+          "end": 27
+        },
+        {
+          "number": 26,
+          "title": "Message Queues",
+          "page": 28,
+          "end": 28
+        },
+        {
+          "number": 27,
+          "title": "Idempotency",
+          "page": 29,
+          "end": 29
+        },
+        {
+          "number": 28,
+          "title": "Event-Driven Architecture",
+          "page": 30,
+          "end": 30
+        },
+        {
+          "number": 29,
+          "title": "Backpressure",
+          "page": 31,
+          "end": 31
+        },
+        {
+          "number": 30,
+          "title": "Rate Limiting",
+          "page": 32,
+          "end": 32
+        },
+        {
+          "number": 31,
+          "title": "Bloom Filters",
+          "page": 33,
+          "end": 33
+        },
+        {
+          "number": 32,
+          "title": "Circuit Breaker + Retry",
+          "page": 34,
+          "end": 34
+        },
+        {
+          "number": 33,
+          "title": "Back-of-Envelope Estimation",
+          "page": 35,
+          "end": 35
+        },
+        {
+          "number": 34,
+          "title": "Monitoring & Observability",
+          "page": 36,
+          "end": 36
+        },
+        {
+          "number": 35,
+          "title": "Batch vs Stream Processing",
+          "page": 37,
+          "end": 37
+        },
+        {
+          "number": 36,
+          "title": "AuthN vs AuthZ",
+          "page": 38,
+          "end": 38
+        }
+      ],
+      "questions": 0,
+      "chunks": 71,
+      "text_pages": 39,
+      "words": 18900,
+      "low_text_pages": []
+    }
+  ],
+  "overlap": {
+    "databases": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "reliability": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "networking": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "security": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "ownership": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "operations": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "messaging": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "design-patterns": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "caching": [
+      "Backend Interview Playbook",
+      "DevOps Interview Playbook",
+      "High-Level Design Problems",
+      "LLD Core Concepts",
+      "Low-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide",
+      "System Design Core Concepts"
+    ],
+    "rag": [
+      "Backend Interview Playbook",
+      "High-Level Design Problems",
+      "Software Engineer to AI Engineer Interview Guide"
+    ]
+  },
+  "warnings": [],
+  "duplicates": [],
+  "limitations": [
+    "Text extraction preserves block coordinates but does not interpret visual diagrams or guarantee table reading order.",
+    "No dedicated salary-negotiation guide identified; keyword mentions are not evidence of a complete curriculum.",
+    "Source examples and model answers must not be presented as the learner's own experience.",
+    "Content ownership and commercial adaptation rights have not been verified."
+  ]
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101820">
+  <meta name="description" content="Learn system design through interactive, animated experiments based on your revision documents.">
+  <title>EnterView — System design, in motion</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="content.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#load-balancing" aria-label="EnterView home"><span class="brand-mark">e<span>v</span></span> EnterView<span class="brand-dot">.</span></a>
+    <div class="workspace-label">YOUR LEARNING WORKSPACE</div>
+    <a class="knowledge-link" href="learning.html">✦ Guided learning paths & labs ↗</a>
+    <button class="library-button" id="open-library"><span>⌕</span> Explore all topics <kbd>/</kbd></button>
+    <div class="nav-heading">INTERACTIVE LABS <span>03</span></div>
+    <nav id="lesson-nav" aria-label="Interactive lessons"></nav>
+    <div class="sidebar-note"><span class="small-icon">↗</span><p>Small experiments.<br>Big ideas, made clear.</p><span>Follow a request. Change one thing.<br>See why the design works.</span></div>
+    <div class="progress-card"><div><span>Your learning progress</span><strong id="progress-count">0 / 3</strong></div><div class="progress-track"><i id="progress-fill"></i></div><small>Pass a lesson’s quiz to complete it.</small></div>
+    <button class="source-button" id="browse-docs">▤ &nbsp; Source document library <span>52</span></button>
+    <div class="sidebar-footer"><span class="status-dot"></span> Local workspace <span>v1.0</span></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>THE SYSTEM DESIGN PLAYBOOK <span class="topbar-slash">/</span> <span id="breadcrumb">Core concepts</span></span><button class="quiet" id="motion-toggle" aria-pressed="false">Motion: on</button></header>
+    <div class="page-content">
+      <div class="lesson-topline"><span class="eyebrow" id="lesson-eyebrow"></span><span class="lesson-count" id="lesson-count"></span></div>
+      <h1 id="lesson-title"></h1>
+      <p class="intro" id="lesson-intro"></p>
+      <div class="lesson-meta"><span class="pill"><span class="status-dot"></span> Interactive lesson</span><span id="lesson-time"></span><a id="source-link" target="_blank" rel="noopener">View source ↗</a></div>
+      <div class="tabs" role="tablist" aria-label="Lesson sections"><button id="tab-experiment" role="tab" aria-selected="true" aria-controls="panel-experiment" data-tab="experiment">01 <span>Experiment</span></button><button id="tab-understand" role="tab" aria-selected="false" aria-controls="panel-understand" data-tab="understand">02 <span>Understand</span></button><button id="tab-check" role="tab" aria-selected="false" aria-controls="panel-check" data-tab="check">03 <span>Check yourself</span><i id="quiz-dot"></i></button></div>
+      <section id="panel-experiment" role="tabpanel" aria-labelledby="tab-experiment">
+        <div class="experiment-layout"><div class="lab-card"><div class="lab-heading"><div><span class="eyebrow">THE LIVE WORKSPACE</span><h2 id="diagram-title"></h2></div><span class="simulation-tag"><i></i> SIMULATION</span></div><div id="diagram" class="diagram"></div><div class="timeline" id="timeline"></div><div class="player"><button id="play" class="primary">▶ <span>Play flow</span></button><button id="step" class="secondary">Step →</button><button id="reset" class="icon-button" aria-label="Reset experiment" title="Reset experiment">↺</button><div class="player-speed"><label for="speed">Speed</label><select id="speed"><option value="1800">0.5×</option><option value="1000" selected>1×</option><option value="500">2×</option></select></div></div><div class="step-explanation" aria-live="polite" aria-atomic="true"><span id="step-number">01</span><div><strong id="step-title"></strong><p id="step-description"></p></div></div></div><aside class="controls-card"><div class="eyebrow">MAKE IT YOURS</div><h2>Change the conditions.</h2><p class="control-intro">A small change can tell you a lot.</p><div id="lab-controls"></div></aside></div>
+        <div class="metrics" id="metrics" aria-label="Simulation measurements"></div>
+        <div class="takeaway"><span>✦</span><div><strong>The idea to take with you</strong><p id="takeaway"></p></div><button class="text-button" id="understand-next">Explore the why ↗</button></div>
+        <p class="model-note" id="model-note"></p>
+      </section>
+      <section id="panel-understand" role="tabpanel" aria-labelledby="tab-understand" hidden></section>
+      <section id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden></section>
+      <footer class="page-footer"><span>BASED ON YOUR DOCUMENTS. BUILT FOR UNDERSTANDING.</span><button id="next-lesson" class="text-button">Next lesson →</button></footer>
+    </div>
+  </main>
+  <dialog id="library-dialog" aria-labelledby="library-title"><div class="dialog-head"><div><span class="eyebrow">YOUR SOURCE LIBRARY</span><h2 id="library-title">52 ways to see the system.</h2></div><button class="icon-button" id="close-library" aria-label="Close library">×</button></div><p>Three animated labs, plus direct access to every topic in your two PDFs.</p><label class="search-box"><span>⌕</span><input id="library-search" type="search" placeholder="Search caching, chat, consensus…" aria-label="Search source topics"></label><div class="library-filters"><button data-filter="all" class="selected">All topics</button><button data-filter="concept">Core concepts</button><button data-filter="problem">Design problems</button></div><div id="library-results"></div><p class="library-footnote">Source pages open in a new tab. PDF page navigation depends on your browser’s PDF viewer.</p></dialog>
+  <div id="toast" role="status"></div>
+</body>
+</html>

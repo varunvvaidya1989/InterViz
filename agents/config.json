@@ -1,0 +1,255 @@
+{
+  "version": "1.0",
+  "prepared_at": "2026-11-10",
+  "product_working_name": "Systems Labs",
+  "mode": "planning_only",
+  "source_of_truth": {
+    "path": "planning/Systems Labs Product Specification.md",
+    "sha256": "31afbaa2528e21e984332d86629d493d7b4d6aaec38853c6fcb796714a581017",
+    "full_read_required": true
+  },
+  "execution": {
+    "current_milestone": "M1",
+    "status": "M1_AWAITING_OWNER_APPROVAL",
+    "owner_approval_record": null,
+    "stop_after_milestone": "M1",
+    "application_implementation_authorised": false,
+    "allow_later_milestones": false,
+    "autonomous_runner_implemented": true,
+    "host_managed_sessions_supported": true,
+    "model_adapter": "automation/providers.py: Docker-contained Codex exec",
+    "model_selection": "Codex CLI default; runtime policy is automation/policy.json"
+  },
+  "concurrency": {
+    "max_total_agents": 4,
+    "max_workers": 3,
+    "one_lead": true,
+    "independent_review_required": true
+  },
+  "roles": {
+    "lead": "agents/roles/lead.md",
+    "ui-ux": "agents/roles/ui-ux.md",
+    "coding": "agents/roles/coding.md",
+    "devops": "agents/roles/devops.md",
+    "qa": "agents/roles/qa.md",
+    "content": "agents/roles/content.md"
+  },
+  "artifacts": {
+    "requirements": "agents/requirements.json",
+    "backlog": "agents/backlog.json",
+    "task_schema": "agents/task.schema.json",
+    "master": "docs/AGENT_DEVELOPMENT_SYSTEM.md",
+    "current_plan": "docs/plans/M1.md",
+    "decisions": "docs/decisions.md",
+    "run_directory": "agents/runs/<run-id>/",
+    "automation_design": "docs/operations/GITHUB_ACTIONS_DOCKER.md",
+    "runtime_runbook": "automation/README.md"
+  },
+  "workflow": {
+    "task_states": [
+      "PLANNED",
+      "READY",
+      "RUNNING",
+      "SUBMITTED",
+      "REVIEWING",
+      "ACCEPTED",
+      "INTEGRATED",
+      "STAGING_VERIFIED",
+      "REWORK",
+      "NEEDS_INPUT",
+      "INTERRUPTED",
+      "CANCELLED"
+    ],
+    "milestone_states": [
+      "PLAN_REVIEW",
+      "APPROVED",
+      "IMPLEMENTING",
+      "QA",
+      "STAGING_REVIEW",
+      "ACCEPTED"
+    ],
+    "max_implementation_review_attempts": 2,
+    "exact_revision_review": true,
+    "workers_may_self_accept": false,
+    "dependency_acceptance_required": true,
+    "predecessor_milestone_acceptance_required": true
+  },
+  "gates": {
+    "M1_OWNER_APPROVAL": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M1_PLAN_READY": {
+      "status": "PREPARED_FOR_REVIEW",
+      "evidence": []
+    },
+    "M2_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M3_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M4_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M5_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M6_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M7_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M8_PLAN_READY": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M1_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M2_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M3_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M4_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M5_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M6_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M7_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    },
+    "M8_ACCEPTED": {
+      "status": "NOT_SATISFIED",
+      "evidence": []
+    }
+  },
+  "owner_open_decisions": [
+    {
+      "id": "OPEN-01",
+      "source": "14.1",
+      "topic": "Final name/domain/prices",
+      "status": "OPEN",
+      "blocks_m1": false,
+      "affected": [
+        "final branding/domain",
+        "M4 live commerce"
+      ]
+    },
+    {
+      "id": "OPEN-02",
+      "source": "14.2",
+      "topic": "Countries/currencies/tax",
+      "status": "OPEN",
+      "blocks_m1": false,
+      "affected": [
+        "M4 production market configuration"
+      ]
+    },
+    {
+      "id": "OPEN-03",
+      "source": "14.3",
+      "topic": "Coach bundle/subscription packaging",
+      "status": "OPEN",
+      "blocks_m1": false,
+      "affected": [
+        "M6 plan quota policy",
+        "M7 subscriptions"
+      ]
+    },
+    {
+      "id": "OPEN-04",
+      "source": "14.4",
+      "topic": "Third-party source licensing/attribution",
+      "status": "OPEN",
+      "blocks_m1": false,
+      "affected": [
+        "M3 affected content publication",
+        "M6 affected source retrieval"
+      ]
+    },
+    {
+      "id": "OPEN-05",
+      "source": "14.5",
+      "topic": "Company names in themes",
+      "status": "OPEN",
+      "blocks_m1": false,
+      "affected": [
+        "company-themed content/marketing"
+      ]
+    }
+  ],
+  "limits": {
+    "max_attempts_per_task": 2,
+    "dispatch_max_minutes": null,
+    "dispatch_max_model_tokens": null,
+    "dispatch_max_cost": null,
+    "note": "Populate applicable limits before a runtime dispatch. No token/cost enforcement is claimed for this planning pack."
+  },
+  "tools": {
+    "planning": [
+      "read_repository",
+      "write_assigned_planning_paths"
+    ],
+    "implementation_requires_approved_milestone": true,
+    "production_deployment_authorised": false,
+    "production_credentials_in_worker_context": false
+  },
+  "shared_ownership": [
+    "workspace manifests and lockfile",
+    "migration order",
+    "shared API/content/trace schemas",
+    "global design tokens"
+  ],
+  "verification": {
+    "fixtures_are_live_evidence": false,
+    "local_tests_are_staging_evidence": false,
+    "source_templates_are_published_labs": false,
+    "baseline_saas_acceptance": "NONE"
+  },
+  "integration_note": "Planning baseline for SaaS M1. Implemented SDLC runtime lives in automation/ and uses signed founder-approved release plans; this file does not approve application implementation.",
+  "bootstrap": {
+    "requires_owner_approved_m1": true,
+    "allowed_tasks": [
+      "M1-LEAD-001",
+      "M1-OPS-001"
+    ],
+    "baseline_exists": false,
+    "mode": "artifact_hash_bootstrap_only_until_git_baseline",
+    "exclusive_workspace_lease_required": true,
+    "ordinary_tasks_require_git_worktree": true,
+    "note": "Bootstrap task handoffs use hashed artifacts; OPS records the reviewed baseline commit when created. No repository or app implementation is created by this configuration."
+  },
+  "automation": {
+    "coordination": "github_actions",
+    "worker_environment": "docker",
+    "application_packaging": "docker",
+    "design": "docs/operations/GITHUB_ACTIONS_DOCKER.md",
+    "workflow_files_implemented": true,
+    "agent_model_adapter_implemented": true,
+    "github_repository_connected": true,
+    "registry_configured": false,
+    "deployments_active": false,
+    "note": "Infrastructure authorised and implemented. Application deployment targets and SaaS M1 acceptance remain pending."
+  }
+}
