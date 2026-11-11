@@ -359,6 +359,54 @@ class Control:
             self._event(db, release_id, "pr_head_associated", actor, {"kind": kind, "item_id": item_id, "head_sha": head_sha, "author_id": author_id, "pr_url": pr_url})
             return self._decoded(self._item(db, release_id, item_id, kind))
 
+    def recover_submission(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
+                           plan_hash, evidence, actor, kind="story", live_worker=False):
+        """Restore a proven unchanged prior submission after verified worker completion.
+
+        The controller verifies the live handoff or retained hosted provenance.
+        This is not a claim/retry or acceptance. Historical attempts and evidence
+        survive; a new epoch requires fresh independent review and CI.
+        """
+        _sha(head_sha);_sha(plan_hash,plan=True);_identity(worker_id);_identity(lease_id)
+        raw=_evidence(evidence);_identity(actor)
+        _require(type(live_worker) is bool,'invalid_result','Live worker completion must be a boolean.')
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            item=self._item(db,release_id,item_id,kind)
+            _require(release['plan_approved_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash'],
+                     'stale_plan','Recovery must preserve the exact approved plan and task contracts.')
+            payload={'kind':kind,'item_id':item_id,'head_sha':head_sha,'pr_url':pr_url,
+                     'worker_id':worker_id,'lease_id':lease_id,'plan_hash':plan_hash,'evidence':json.loads(raw),
+                     'live_worker':live_worker}
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='submission_recovered' ORDER BY seq DESC",(release_id,)):
+                if json.loads(row['payload'])==payload:
+                    _require(item['head_sha']==head_sha and item['status'] in ('SUBMITTED','INTEGRATED','DONE'),
+                             'recovery_used','This recovery was already used; a new rejection needs lead rework.')
+                    return self._decoded(item)
+            _require(item['status']=='IN_PROGRESS' and item['head_sha'] is None and item['pr_url']==pr_url,
+                     'invalid_stage','Only an interrupted resubmission to its original PR can be recovered.')
+            _require(item['lease_id']==lease_id and item['lease_worker']==worker_id,
+                     'invalid_lease','Recovery evidence does not match the interrupted worker lease.')
+            if live_worker:
+                _require(actor==worker_id and item['lease_until'] is not None and item['lease_until']>self.clock(),
+                         'invalid_lease','Live resubmission requires its completed worker and current lease.')
+            else:
+                _require(item['lease_until'] is not None and item['lease_until']<=self.clock(),
+                         'lease_active','Cannot recover an active worker lease.')
+            prior=None
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='pr_head_associated' ORDER BY seq DESC",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id:
+                    prior=value;break
+            _require(prior and prior.get('head_sha')==head_sha and prior.get('pr_url')==pr_url,
+                     'unproven_submission','Recovery cannot introduce a new PR or roll back to an older candidate.')
+            authors=sorted(set(json.loads(item['author_ids'])+[worker_id]))
+            db.execute("UPDATE items SET status='SUBMITTED',head_sha=?,integration_sha=NULL,epoch=epoch+1,author_ids=?,lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (head_sha,_json(authors),self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'submission_recovered',actor,payload)
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
     def record_review(self, release_id, item_id, head_sha, reviewer_id, verdict, evidence, actor, kind="story"):
         _sha(head_sha); raw = _evidence(evidence); _identity(reviewer_id, "reviewer")
         _require(verdict in ("APPROVE", "REQUEST_CHANGES"), "invalid_verdict", "Review verdict must be APPROVE or REQUEST_CHANGES.")

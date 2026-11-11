@@ -61,3 +61,14 @@ No real SaaS story or release plan has been approved by this bootstrap. Stripe, 
 Independent review checks the queued exact candidate in an isolated read-only sandbox; the controller and reviewer role instructions stay on the trusted default branch. If an older controller reviewed only a diff against main, integrate the independently reviewed controller repair before requesting another bounded review. Exhausted attempts need lead/controller rework; do not edit signed state to reset them.
 
 GitHub action_required means a maintainer must approve the workflow before tests run. The controller does not treat this as executable CI evidence or consume its run receipt. Existing completed-run receipts remain unchanged to prevent historical replay. For a run already consumed by the older controller, dispatch a fresh CI run; attempt-level receipt migration is deferred. Existing failure records are not rewritten locally. Hosted CI and exact-revision review must both pass before protected integration.
+
+
+## Automatic recovery of unchanged resubmissions
+
+A rework worker may correctly report that its existing candidate needs no code changes. If it resubmits the exact previously recorded PR/head under its current task lease, publication restores that submission instead of rejecting an empty diff. Initial tasks with no prior candidate still require real changes.
+
+For an older interrupted publication, the trusted controller can recover the retained unchanged handoff after its lease expires. It verifies the failed default-branch controller run, successful worker step, matching failed publication, artifact digest/provenance, exact worker/lease/task/plan and original PR head. It compares the entire recorded baseline against a clean candidate checkout. Missing, expired or mismatched evidence does not authorize recovery.
+
+The transition preserves attempts, budgets and historical reviews/CI. A fresh evidence epoch requires fresh exact-head independent review and a new CI run; no old success is reused. Recovery has at most the configured two attempts per interrupted lease and cannot reopen a subsequent genuine review rejection. Audit-backed scheduling-cache cleanup survives an interrupted recovery. Exhausted/expired leases that cannot recover are escalated to the lead.
+
+After an infrastructure controller update is reviewed and merged to main, the push event runs reconciliation immediately; scheduled reconciliation remains a fallback. No founder command comment, copied hash, counter reset or local signed-state edit is needed. Protected-path acceptance still governs merging the recovered PR; restored submission is not acceptance or milestone completion.
