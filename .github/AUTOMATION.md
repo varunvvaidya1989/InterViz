@@ -6,7 +6,7 @@ This directory wires the trusted `automation.cli` controller into GitHub Actions
 
 | Workflow | Purpose | Controller commands |
 |---|---|---|
-| `agent-control.yml` | Founder issue/comment events, scheduled reconciliation, queued lead/coding/UI/UX/DevOps/review/QA work | `state --action restore`; `event --event-name ... --event-path ...`; `worker --role ... --task-id ... --revision ... --event-path ...`; `reconcile --event-path ...`; `state --action save` |
+| `agent-control.yml` | Founder issue/comment events, controller-update push/scheduled reconciliation, queued lead/coding/UI/UX/DevOps/review/QA work | `state --action restore`; `event --event-name ... --event-path ...`; `worker --role ... --task-id ... --revision ... --event-path ...`; `reconcile --event-path ...`; `state --action save` |
 | `infrastructure-ci.yml` | Read-only, secret-free PR/default-branch infrastructure checks | `python -m unittest discover -s automation -p 'test_*.py' -v`; `validate --scope infrastructure --revision ...` |
 | `review-integration.yml` | CI/review facts, independent review, bounded debate/rework and exact-revision merge eligibility | `event`; queued `worker --role review`; `reconcile`; signed state restore/save |
 | `staging-qa.yml` | Exact integrated-revision checks and QA findings/bug tickets | `validate --scope infrastructure|staging --revision ...`; optional queued `worker --role qa`; `reconcile`; signed state restore/save |
@@ -57,3 +57,10 @@ Action references were resolved from each official repository's remote tag on 10
 - `actions/upload-artifact` v4 → `ea165f8d65b6e75b540449e92b4886f43607fa02`.
 
 Pins should be updated through reviewed PRs after checking the official release/commit and runner compatibility. No privileged `pull_request_target` checkout or artifact-to-shell execution is used. Official guidance: [secure workflow use](https://docs.github.com/en/actions/reference/security/secure-use), [workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), and [deployment environment protections](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+
+
+## Retained submission recovery
+
+The controller-update push event reconciles on trusted main so a reviewed recovery fix becomes effective without a manual command. Expired unchanged resubmissions may be restored only from a failed trusted controller run whose successful worker handed back the original exact candidate. Recovery verifies artifact SHA-256/provenance, worker/lease/approved-plan identity, original PR/current head and clean candidate bytes; artifact content is never extracted or executed. Download redirects remove the GitHub credential before reaching the HTTPS artifact host.
+
+Signed ledger writes remain inside the serialized trusted controller. Old reviews and CI remain immutable but cannot satisfy the recovered submission's new evidence epoch. Independent review and fresh CI are dispatched within existing limits. Protected controller changes still require founder acceptance, and no recovery transition can merge, accept, deploy or reset attempt counts. Retention expiry or missing evidence is a lead recovery prerequisite, not a test pass.
