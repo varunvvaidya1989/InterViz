@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .control import Control, ControlError
 from .github import GitHub, GitHubError, SnapshotStore
-from .providers import DockerAgent, build_prompt, check_changed_paths
+from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
 from .recovery import source_handoff, unchanged_result
 
@@ -235,6 +235,8 @@ def worker(p,args):
     if not re.fullmatch(r"[a-f0-9]{40}|[a-f0-9]{64}",args.revision or ""):raise ValueError("Worker needs an exact target revision.")
     role=args.role;key="queue:"+role+":"+args.task_id;queued=kv(key)
     if not queued or queued.get("revision")!=args.revision:raise ValueError("Worker was not queued by the authenticated controller for this exact revision.")
+    if args.role=='review' and queued.get('review_contract')!=REVIEW_CONTRACT:
+        raise ValueError('The review was not queued under the corrected environment contract.')
     planning=role=="lead" and args.task_id.endswith(":plan:release")
     if planning:
         release_id=args.task_id.split(":")[0];kind="plan";item_id="release"
@@ -250,6 +252,7 @@ def worker(p,args):
     if not planning and role not in {"review","qa"} and not p["checks"]["application_configured"] and item["scope"].get("kind")!="infrastructure":raise ValueError("Configure SaaS application checks before dispatching application coding.")
     worker_id=f"{role}:{release_id}:{item_id}:{uuid.uuid4().hex[:12]}"
     count_key="worker-attempt:"+role+":"+args.task_id+":"+args.revision
+    if role=='review':count_key+=':'+REVIEW_CONTRACT
     attempts=kv(count_key) or 0
     if attempts>=p["limits"]["max_attempts"]:raise ValueError("Worker attempt bound reached; lead intervention required.")
     kv(count_key,attempts+1,True)
@@ -268,7 +271,7 @@ def worker(p,args):
     if git(["rev-parse","HEAD"],home)!=args.revision:
         raise ValueError("Worker workspace does not match the exact target revision.")
     before=scan_files(home)
-    feedback=[e["payload"] for e in control.events(release_id) if e["type"]=="review_recorded" and e["payload"].get("item_id")==item_id]
+    feedback=[e["payload"] for e in control.events(release_id) if e["type"] in {'review_recorded','review_environment_blocked'} and e["payload"].get("item_id")==item_id]
     assignment={"release_id":release_id,"item_id":item_id,"role":role,"scope":item["scope"],"target_revision":args.revision,"plan_hash":current_hash,"founder_approval":release.get("plan_approved_by"),"release_direction":release.get("metadata"),"approved_plan":manifest.get("document") if manifest else None,"review_feedback":feedback[-4:],"release_items":control.snapshot(release_id)["items"] if role=="qa" else None}
     if planning:assignment.update(previous_plan=kv("previous-plan:"+release_id),founder_feedback=kv("plan-feedback:"+release_id))
     diff=""
@@ -284,7 +287,7 @@ def worker(p,args):
         plan,unused=plan_document(home/"docs/releases"/release_id/"plan.json",p,home)
         if plan["release_id"]!=release_id:raise ValueError("Plan release identity changed.")
         for story in plan["user_stories"]:validate_assignment(story["allowed_paths"],p,infrastructure=story.get("kind")=="infrastructure")
-    return output("worker-result.json",{"role":role,"reference":args.task_id,"worker_id":worker_id,"revision":args.revision,"workspace":str(home),"baseline":before,"after":after,"changed_paths":changed,"report":report,"lease_id":claim.get("lease_id") if claim else None,"kind":kind,"plan_hash":current_hash})
+    return output("worker-result.json",{"role":role,"reference":args.task_id,"worker_id":worker_id,"revision":args.revision,"workspace":str(home),"baseline":before,"after":after,"changed_paths":changed,"report":report,"lease_id":claim.get("lease_id") if claim else None,"kind":kind,"plan_hash":current_hash,'review_contract':REVIEW_CONTRACT if role=='review' else None})
 
 
 def recover_result(p,client,control,item,result,source=None):
@@ -329,8 +332,11 @@ def finish_recovery_cache(control):
     # old scheduling receipts blocking the new evidence epoch forever.
     for release in control.snapshot()['releases']:
         for event in control.events(release['id']):
-            if event['type']!='submission_recovered':continue
-            value=event['payload'];marker='recovery-cache-done:'+value['lease_id']
+            if event['type'] not in {'submission_recovered','review_contract_corrected','review_environment_blocked'}:continue
+            value=event['payload']
+            if event['type']=='submission_recovered':marker='recovery-cache-done:'+value['lease_id']
+            elif event['type']=='review_environment_blocked':marker='review-environment-cache-done:'+str(event['seq'])
+            else:marker='review-contract-cache-done:'+release['id']+':'+value['kind']+':'+value['item_id']+':'+value['contract']
             if kv(marker):continue
             item=next((i for i in control.snapshot(release['id'])['items']
                        if i['id']==value['item_id'] and i['kind']==value['kind']),None)
@@ -382,9 +388,18 @@ def publish_result(p,client,control):
         release_id=result["reference"].split(":")[0];kind="plan";item_id="release";item={"title":"Release plan","attempts":1,"scope":{"allowed_paths":["docs/releases/"+release_id]}}
     else:release_id,kind,item_id,item=find_item(control,result["reference"])
     if role=="review":
+        if result.get('review_contract')!=REVIEW_CONTRACT:raise ValueError('Review result belongs to a stale environment contract.')
+        if report['verdict']!='APPROVE' and not report['findings']:
+            control.record_review_environment(release_id,item_id,result['revision'],result['worker_id'],
+                    {'report':report,'execution':os.environ.get('GITHUB_RUN_ID'),'contract':REVIEW_CONTRACT},result['worker_id'],kind=kind)
+            finish_recovery_cache(control)
+            client.request('POST',client.root+'/check-runs',{'name':'sdlc-independent-review','head_sha':result['revision'],
+                           'status':'completed','conclusion':'failure','output':{'title':'Review environment blocked','summary':report['summary'][:60000]}})
+            kv(marker,{'published':True,'environment_blocked':True},True);kv('queue:review:'+result['reference'],None,True)
+            return {'processed_worker':role,'reference':result['reference'],'environment_blocked':True}
         verdict="APPROVE" if report["verdict"]=="APPROVE" and not any(f["severity"] in {"critical","high","normal"} for f in report["findings"]) else "REQUEST_CHANGES"
         control.record_review(release_id,item_id,result["revision"],result["worker_id"],verdict,{"report":report,"execution":os.environ.get("GITHUB_RUN_ID")},result["worker_id"],kind=kind)
-        kv("reviewed:"+result["reference"]+":"+result["revision"],{"verdict":verdict},True)
+        kv("reviewed:"+result["reference"]+":"+result["revision"],{"verdict":verdict,'contract':REVIEW_CONTRACT},True)
         client.request("POST",client.root+"/check-runs",{"name":"sdlc-independent-review","head_sha":result["revision"],"status":"completed","conclusion":"success" if verdict=="APPROVE" else "failure","output":{"title":"Independent agent review","summary":report["summary"][:60000]}})
         number=int(item["pr_url"].rsplit("/",1)[1]);client.comment(number,"### Independent agent review\nVerdict: "+verdict+"\n\n"+report["summary"]+"\n\n"+"\n".join("- "+f["severity"]+": "+f["description"] for f in report["findings"]))
     elif role=="qa":
@@ -470,6 +485,14 @@ def reconcile(p,args):
         except (ValueError,ControlError,TypeError):continue
     if p["execution_mode"]!="live" or not p["providers"]["live_execution_enabled"]:return {"mode":"dry-run","worker_result":processed,"queued":[],"note":"No paid model calls or merges are enabled."}
     require_live(p);scheduled=[]
+    for item in control.snapshot()['items']:
+        if item['status']!='OPEN' or not item.get('head_sha') or item.get('lease_id'):continue
+        try:
+            _,actual=current_plan(p,item['release_id'])
+            release=control.snapshot(item['release_id'])['releases'][0]
+            if release.get('plan_approved_hash')!=actual:continue
+            control.reopen_blocked_review(item['release_id'],item['id'],item['head_sha'],REVIEW_CONTRACT,'controller:review-contract',kind=item['kind'])
+        except (ValueError,ControlError):continue
     finish_recovery_cache(control)
     recovered=recover_interrupted(p,client,control)
     for run in client.pages(client.root+"/actions/workflows/infrastructure-ci.yml/runs",key="workflow_runs"):
@@ -505,10 +528,18 @@ def reconcile(p,args):
             key="queue:review:"+release["id"]+":"+item["kind"]+":"+item["id"]
             queued=kv(key)
             if not kv("reviewed:"+release["id"]+":"+item["kind"]+":"+item["id"]+":"+item["head_sha"]) and (not queued or queued.get("revision")!=item["head_sha"] or queued.get("time",0)<time.time()-1800):
+                count_key='worker-attempt:review:'+release['id']+':'+item['kind']+':'+item['id']+':'+item['head_sha']+':'+REVIEW_CONTRACT
+                if (kv(count_key) or 0)>=p['limits']['max_attempts']:
+                    escalation='review-exhausted:'+count_key
+                    if not kv(escalation):
+                        issue=client.create_issue('[Lead review] Review environment exhausted for '+item['id'],
+                               'Correct the bounded review contract; do not retry indefinitely or waive executable acceptance.\n\nTask: '+key)
+                        kv(escalation,issue['number'],True)
+                    continue
                 if any("patch" not in f for f in files):raise ValueError("Review diff is incomplete/binary/oversized; manual review required.")
                 diff="\n".join(f"FILE: {f['filename']}\n{f.get('patch','[binary/large patch omitted]')}" for f in files)
                 if len(diff)>180000:raise ValueError("Review diff exceeds the complete-review limit; split the work item.")
-                kv(key,{"revision":item["head_sha"],"time":time.time(),"diff":diff},True)
+                kv(key,{"revision":item["head_sha"],"time":time.time(),"diff":diff,'review_contract':REVIEW_CONTRACT},True)
                 client.dispatch("agent-control.yml",{"action":"worker","role":"review","task-id":f"{release['id']}:{item['kind']}:{item['id']}","revision":item["head_sha"]});scheduled.append(key)
             if not kv("ci-queued:"+item["head_sha"]):
                 kv("ci-queued:"+item["head_sha"],{"pr":pr["number"],"time":time.time()},True)
