@@ -15,17 +15,17 @@ The founder supplies direction and release scope. The lead prepares stories, UX,
 
 ## Founder workflow
 
-1. Open the **Founder plan** issue form and describe the release outcome, included/excluded work and milestone. Add/retain `sdlc:plan`.
-2. The lead proposes `docs/releases/R-<issue-number>/plan.json` and related UX/architecture/operations documents in a PR. Review these first. The controller posts the exact approval command.
-3. Approve with `/sdlc approve-plan RELEASE PLAN_HASH`. Editing stories, the specification or policy invalidates it.
+1. Describe the outcome in the **Founder plan** issue form. Agents prepare the scope, architecture, operations and tests.
+2. Open the local founder dashboard (`python -m founder_dashboard.server --open-browser`). Review the plan summary and select **Approve plan**. No command comments, release IDs or hashes need to be typed.
+3. Agents build, independently review, test and integrate approved work. The dashboard distinguishes an agent recovery problem from a founder decision; approval does not reset exhausted task attempts.
+4. Once integrated QA passes, the controller prepares the release candidate automatically. Review its summary and select **Approve release**.
+5. When production publication is configured and authorized, the controller requests publication of that exact approved candidate. A disabled production target remains clearly disabled; approval never invents deployment evidence.
 
-   Before implementation begins, request changes with `/sdlc revise-plan RELEASE describe the changes`. This withdraws the previous approval and sends your feedback and previous plan to the lead. Started releases require an explicit amendment, preserving their existing work. Repeated unsuccessful planning attempts escalate rather than looping indefinitely.
-4. Follow linked PRs, checks, bounded review comments and bug tickets. Protected controller/policy changes require separate founder acceptance; they cannot authorise their own automatic merge.
-5. After actual staging QA passes, run **SDLC - Founder release**, phase `candidate`, with release ID and exact integrated commit. Review its candidate manifest and changelog.
-6. Approve with `/sdlc approve-release RELEASE COMMIT MANIFEST_HASH`.
-7. Publication remains gated on actual deployment configuration, current QA and matching approval. The scaffold cannot report an undeployed SaaS as released.
+A click queues a request. The dashboard shows **Approval requested** until the trusted controller saves the exact approval in signed state. Failed/stale requests remain visible with evidence and retry guidance. Only the configured founder's authenticated GitHub identity may request approval. If the plan or candidate changes, the old click cannot approve the replacement.
 
-For an already committed reviewed plan, `/sdlc plan docs/releases/<release>/plan.json` imports it into the ledger. Plans require `release_id`, `user_stories`, `ui_ux`, `architecture`, `operations`, `acceptance_tests`, and `delivery_tasks`. Every story defines stable ID, title, role, allowed paths, acceptance criteria and dependencies. Use `kind: infrastructure` only for explicitly authorised infrastructure scope.
+The dashboard is loopback-only. Browser requests use same-origin checks and a per-server CSRF token. GitHub credentials remain on the Python server; the server dispatches the trusted `founder-approval.yml` workflow and never writes/signs controller state itself. That workflow must first be independently reviewed and merged into trusted `main` before the buttons are active. Existing command comments remain a compatibility path, not a required founder operation.
+
+Protected controller/policy changes still need their separate founder acceptance and exact automated evidence. This UI does not waive branch protection, CI, independent review, QA, scope or production configuration.
 
 ## Setup and controls
 

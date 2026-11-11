@@ -47,7 +47,11 @@ jobs:
           mkdir -p .sdlc/output
           python -m unittest discover -s automation -p 'test_*.py' -v 2>&1 | tee .sdlc/output/infrastructure-unit-tests.log
       - name: Validate infrastructure contract for this exact commit
+        # Dashboard approvals are part of the infrastructure control surface.
+        # These tests use loopback fixtures and never dispatch remote workflows.
         run: python -m automation.cli validate --scope infrastructure --revision "$SDLC_TARGET_REVISION"
+      - name: Test founder dashboard and approval transport
+        run: python -m unittest discover -s founder_dashboard -p 'test_*.py' -v
       - name: Run application checks when configured
         run: |
           python - <<'PY'
