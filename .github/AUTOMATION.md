@@ -6,7 +6,7 @@ This directory wires the trusted `automation.cli` controller into GitHub Actions
 
 | Workflow | Purpose | Controller commands |
 |---|---|---|
-| `agent-control.yml` | Founder issue/comment events, scheduled reconciliation, queued lead/coding/UI/UX/DevOps/review/QA work | `state --action restore`; `event --event-name ... --event-path ...`; `worker --role ... --task-id ... --revision ... --event-path ...`; `reconcile --event-path ...`; `state --action save` |
+| `agent-control.yml` | Founder issue/comment events, controller-update push/scheduled reconciliation, queued lead/coding/UI/UX/DevOps/review/QA work | `state --action restore`; `event --event-name ... --event-path ...`; `worker --role ... --task-id ... --revision ... --event-path ...`; `reconcile --event-path ...`; `state --action save` |
 | `infrastructure-ci.yml` | Read-only, secret-free PR/default-branch infrastructure checks | `python -m unittest discover -s automation -p 'test_*.py' -v`; `validate --scope infrastructure --revision ...` |
 | `review-integration.yml` | CI/review facts, independent review, bounded debate/rework and exact-revision merge eligibility | `event`; queued `worker --role review`; `reconcile`; signed state restore/save |
 | `staging-qa.yml` | Exact integrated-revision checks and QA findings/bug tickets | `validate --scope infrastructure|staging --revision ...`; optional queued `worker --role qa`; `reconcile`; signed state restore/save |
@@ -65,3 +65,9 @@ Pins should be updated through reviewed PRs after checking the official release/
 The founder reviews summaries in the local dashboard and selects Approve plan or Approve release. The server verifies current policy, GitHub identity and the displayed version before dispatching founder-approval.yml against the trusted default branch. The workflow authenticates the run actor again, restores signed state, checks current source/PR head or frozen QA candidate, records approval, reconciles and saves with compare-and-swap. The browser never supplies founder identity or approval authority. Request acceptance is not approval completion.
 
 After QA, reconciliation freezes a candidate automatically. Authorized publication dispatch uses the bot identity but requires the saved founder candidate/manifest approval, current policy and exact current CI/review/QA. The bot identity alone grants no approval. Production remains disabled until its actual adapter and authority are configured. The optional environment protections remain honored.
+
+## Retained submission recovery
+
+The controller-update push event reconciles on trusted main so a reviewed recovery fix becomes effective without a manual command. Expired unchanged resubmissions may be restored only from a failed trusted controller run whose successful worker handed back the original exact candidate. Recovery verifies artifact SHA-256/provenance, worker/lease/approved-plan identity, original PR/current head and clean candidate bytes; artifact content is never extracted or executed. Download redirects remove the GitHub credential before reaching the HTTPS artifact host.
+
+Signed ledger writes remain inside the serialized trusted controller. Old reviews and CI remain immutable but cannot satisfy the recovered submission's new evidence epoch. Independent review and fresh CI are dispatched within existing limits. Protected controller changes still require founder acceptance, and no recovery transition can merge, accept, deploy or reset attempt counts. Retention expiry or missing evidence is a lead recovery prerequisite, not a test pass.

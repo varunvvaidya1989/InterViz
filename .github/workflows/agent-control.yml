@@ -3,6 +3,9 @@ name: SDLC - Agent control
 on:
   issues:
     types: [opened, edited, labeled, reopened]
+  push:
+    branches: [main]
+    paths: ['automation/**', '.github/workflows/agent-control.yml']
   issue_comment:
     types: [created]
   schedule:
@@ -38,7 +41,7 @@ jobs:
     if: >-
       vars.SDLC_ENABLED == 'true' &&
       github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
-      (github.event_name == 'schedule' ||
+      (github.event_name == 'schedule' || github.event_name == 'push' ||
       contains(fromJSON(vars.SDLC_TRUSTED_ACTORS || '[]'), github.actor) ||
       (github.event_name == 'workflow_dispatch' && github.actor == 'github-actions[bot]'))
     runs-on: ubuntu-latest
@@ -50,7 +53,7 @@ jobs:
       actions: write
       checks: write
     env:
-      SDLC_ACTION: ${{ inputs.action || (github.event_name == 'schedule' && 'reconcile') || 'event' }}
+      SDLC_ACTION: ${{ inputs.action || ((github.event_name == 'schedule' || github.event_name == 'push') && 'reconcile') || 'event' }}
       SDLC_ROLE: ${{ inputs.role || 'lead' }}
       SDLC_TASK_ID: ${{ inputs.task-id || '' }}
       SDLC_TARGET_REVISION: ${{ inputs.revision || '' }}

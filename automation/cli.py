@@ -18,6 +18,8 @@ from .providers import DockerAgent, build_prompt, check_changed_paths
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
 from .approvals import validate_intent
 
+from .recovery import source_handoff, unchanged_result
+
 ROOT=Path(__file__).resolve().parents[1]
 DB=ROOT/".sdlc/state.sqlite3"
 OUT=ROOT/".sdlc/output"
@@ -337,6 +339,91 @@ def worker(p,args):
     return output("worker-result.json",{"role":role,"reference":args.task_id,"worker_id":worker_id,"revision":args.revision,"workspace":str(home),"baseline":before,"after":after,"changed_paths":changed,"report":report,"lease_id":claim.get("lease_id") if claim else None,"kind":kind,"plan_hash":current_hash})
 
 
+def recover_result(p,client,control,item,result,source=None):
+    """Republish existing bytes; no new implementation attempt or acceptance."""
+    release_id=item['release_id'];reference=release_id+':'+item['kind']+':'+item['id']
+    manifest,plan_hash=current_plan(p,release_id)
+    unchanged_result(result,item,plan_hash)
+    pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
+    if (pr['html_url']!=item['pr_url'] or pr['state']!='open'
+            or pr['head']['sha']!=result['revision'] or pr['head']['repo']['full_name']!=client.repository
+            or pr['base']['ref']!=p['repository']['default_branch']):
+        raise ValueError('Recovery PR was closed, changed or belongs to another repository.')
+    pr_files(client,pr,item,p)
+    prior=next((e['payload'] for e in reversed(control.events(release_id))
+                if e['type']=='pr_head_associated' and e['payload'].get('item_id')==item['id']
+                and e['payload'].get('kind')==item['kind']),None)
+    if not prior or prior.get('head_sha')!=result['revision'] or prior.get('pr_url')!=item['pr_url']:
+        raise ValueError('Recovery cannot introduce a new or older PR candidate.')
+    # Inspect candidate bytes in a trusted clone, never worker-mutated Git metadata.
+    home=ROOT/'.sdlc/recovery-checkouts'/uuid.uuid4().hex;home.parent.mkdir(parents=True,exist_ok=True)
+    git(['clone','--no-hardlinks',str(ROOT),str(home)],ROOT)
+    if not git(['rev-parse','--verify',result['revision']+'^{commit}'],home,check=False):
+        git(['fetch','https://github.com/'+client.repository+'.git',result['revision']],home)
+    git(['checkout','--detach',result['revision']],home)
+    if git(['rev-parse','HEAD'],home)!=result['revision'] or scan_files(home)!=result['after']:
+        raise ValueError('Recovery artifact bytes do not match the exact trusted candidate.')
+    evidence=source or {'execution':os.environ.get('GITHUB_RUN_ID','local-fixture'),'handoff_sha256':digest(result)}
+    restored=control.recover_submission(release_id,item['id'],result['revision'],item['pr_url'],
+                result['worker_id'],result['lease_id'],plan_hash,evidence,
+                'controller:recovery' if source else result['worker_id'],kind=item['kind'],live_worker=not bool(source))
+    # Cache invalidation is not history deletion: old reviews/CI remain in the
+    # audit ledger and cannot certify the new submission epoch.
+    for key in ('reviewed:'+reference+':'+result['revision'],'ci-queued:'+result['revision'],
+                'queue:review:'+reference,'queue:'+result['role']+':'+reference):
+        kv(key,None,True)
+    kv('recovery-cache-done:'+result['lease_id'],True,True)
+    return restored
+
+
+def finish_recovery_cache(control):
+    # A controller interruption after the transactional restore must not leave
+    # old scheduling receipts blocking the new evidence epoch forever.
+    for release in control.snapshot()['releases']:
+        for event in control.events(release['id']):
+            if event['type']!='submission_recovered':continue
+            value=event['payload'];marker='recovery-cache-done:'+value['lease_id']
+            if kv(marker):continue
+            item=next((i for i in control.snapshot(release['id'])['items']
+                       if i['id']==value['item_id'] and i['kind']==value['kind']),None)
+            if item and item['status']=='SUBMITTED' and item['head_sha']==value['head_sha']:
+                reference=release['id']+':'+item['kind']+':'+item['id']
+                for key in ('reviewed:'+reference+':'+item['head_sha'],'ci-queued:'+item['head_sha'],
+                            'queue:review:'+reference,'queue:'+item['scope'].get('role','coding')+':'+reference):
+                    kv(key,None,True)
+            kv(marker,True,True)
+
+
+def recover_interrupted(p,client,control):
+    candidates=[i for i in control.snapshot()['items'] if i['status']=='IN_PROGRESS' and i.get('pr_url')
+                and i.get('head_sha') is None and (i.get('lease_until') or float('inf'))<=time.time()]
+    if not candidates:return []
+    runs=client.request('GET',client.root+'/actions/workflows/agent-control.yml/runs?status=failure&event=workflow_dispatch&per_page=30')['workflow_runs']
+    recovered=[]
+    for item in candidates:
+        lease_key='recovery-attempt:'+str(item['lease_id'])
+        attempts=kv(lease_key) or 0
+        if attempts>=p['limits']['max_attempts']:continue
+        for run in runs:
+            try:
+                _,plan_hash=current_plan(p,item['release_id'])
+                result,source=source_handoff(client,run,item,plan_hash)
+            except (ValueError,KeyError,TypeError,GitHubError):
+                continue
+            kv(lease_key,attempts+1,True)
+            try:
+                restored=recover_result(p,client,control,item,result,source)
+                recovered.append(restored['id'])
+            except (ValueError,RuntimeError,KeyError,TypeError,GitHubError) as error:
+                output('recovery-status.json',{'task_id':item['id'],'status':'BLOCKED',
+                       'reason':str(error),'attempts':attempts+1,'source':source})
+            break
+        else:
+            output('recovery-status.json',{'task_id':item['id'],'status':'BLOCKED',
+                   'reason':'No retained unchanged handoff matches this expired lease; lead decomposition is required.'})
+    return recovered
+
+
 def publish_result(p,client,control):
     file=OUT/"worker-result.json"
     if not file.exists():return None
@@ -366,7 +453,15 @@ def publish_result(p,client,control):
                 kv("bug-issue:"+bug_id,issue["number"],True)
     else:
         changed=result["changed_paths"]
-        if not changed:raise ValueError("Coding worker produced no publishable change; return it to the lead.")
+        if not changed:
+            if planning or not item.get('pr_url'):
+                raise ValueError('A new task needs publishable changes; unchanged recovery requires its original PR.')
+            home=Path(result['workspace']).resolve()
+            if not home.is_relative_to((ROOT/'.sdlc/workspaces').resolve()) or scan_files(home)!=result['after']:
+                raise ValueError('Unchanged worker bytes changed or escaped the controller workspace.')
+            recover_result(p,client,control,item,result)
+            kv(marker,{'published':True,'unchanged':True},True)
+            return {'processed_worker':role,'reference':result['reference'],'unchanged':True}
         home=Path(result["workspace"]).resolve()
         if not home.is_relative_to((ROOT/".sdlc/workspaces").resolve()):raise ValueError("Worker workspace location is invalid.")
         if scan_files(home)!=result["after"]:raise ValueError("Worker bytes changed after its handoff.")
@@ -427,6 +522,8 @@ def reconcile(p,args):
         except (ValueError,ControlError,TypeError):continue
     if p["execution_mode"]!="live" or not p["providers"]["live_execution_enabled"]:return {"mode":"dry-run","worker_result":processed,"queued":[],"note":"No paid model calls or merges are enabled."}
     require_live(p);scheduled=[]
+    finish_recovery_cache(control)
+    recovered=recover_interrupted(p,client,control)
     for run in client.pages(client.root+"/actions/workflows/infrastructure-ci.yml/runs",key="workflow_runs"):
         if run.get("status")=="completed":record_ci_run(p,client,control,run)
     for release in control.snapshot()["releases"]:
@@ -442,7 +539,8 @@ def reconcile(p,args):
             if item["kind"]=="story" and not kv(issue_key):
                 issue=client.create_issue("[Story] "+item["title"][:180],f"Release: {release['id']}\nItem: {item['id']}\n\nAcceptance:\n"+"\n".join("- "+a for a in item["scope"]["acceptance"])+"\n\nScope: "+", ".join(item["scope"]["allowed_paths"]),labels=["sdlc:story"])
                 kv(issue_key,issue["number"],True)
-            if item["status"]=="OPEN" and item["attempts"]>=item["max_attempts"]:
+            expired=item['status']=='IN_PROGRESS' and item.get('lease_until') and item['lease_until']<=time.time()
+            if (item["status"]=="OPEN" or expired) and item["attempts"]>=item["max_attempts"]:
                 marker="escalated:"+release["id"]+":"+item["id"]
                 if not kv(marker):
                     issue=client.create_issue("[Lead review] "+item["title"],"Bounded developer/review attempts exhausted. Re-plan or split this work; do not waive failed acceptance.\n\nRelease: "+release["id"]+"\nItem: "+item["id"]);kv(marker,issue["number"],True)
@@ -504,7 +602,7 @@ def reconcile(p,args):
                 control.start_qa(rel["id"],revision,"controller:qa")
                 kv(key,{"revision":revision,"time":time.time()},True)
                 client.dispatch("staging-qa.yml",{"scope":"staging","task-id":reference,"revision":revision});scheduled.append(key)
-    return {"worker_result":processed,"scheduled":scheduled}
+    return {"worker_result":processed,"scheduled":scheduled,"recovered":recovered}
 
 
 def release(p,args):
