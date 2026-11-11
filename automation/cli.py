@@ -16,7 +16,7 @@ from .control import Control, ControlError
 from .github import GitHub, GitHubError, SnapshotStore
 from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
-from .recovery import source_handoff, unchanged_result
+from .recovery import source_handoff, unchanged_result, verified_pass_report
 
 ROOT=Path(__file__).resolve().parents[1]
 DB=ROOT/".sdlc/state.sqlite3"
@@ -378,6 +378,42 @@ def recover_interrupted(p,client,control):
     return recovered
 
 
+def reconcile_pass_aliases(p,client,control):
+    relevant={'review_environment_blocked','review_recorded','pr_head_associated',
+              'submission_recovered','review_contract_corrected','item_claimed'}
+    for item in control.snapshot()['items']:
+        if item['status']!='SUBMITTED' or not item.get('head_sha'):continue
+        events=control.events(item['release_id'])
+        event=next((e for e in reversed(events) if e['type'] in relevant and
+                    e['payload'].get('item_id')==item['id'] and e['payload'].get('kind')==item['kind']),None)
+        if not event:continue
+        if event['type']=='review_environment_blocked':
+            try:
+                _,actual=current_plan(p,item['release_id'])
+                release=control.snapshot(item['release_id'])['releases'][0]
+                if release.get('plan_approved_hash')!=actual:continue
+                pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
+                if pr['state']!='open' or pr['head']['sha']!=item['head_sha'] or pr['head']['repo']['full_name']!=client.repository:continue
+                pr_files(client,pr,item,p)
+                evidence=verified_pass_report(client,event,item,actual,REVIEW_CONTRACT)
+                evidence.update(evidence_epoch=item['epoch'],requires_fresh_ci=True)
+                control.record_review(item['release_id'],item['id'],item['head_sha'],event['actor'],'APPROVE',evidence,event['actor'],kind=item['kind'])
+                event=control.events(item['release_id'])[-1]
+            except (ValueError,KeyError,TypeError,GitHubError):continue
+        evidence=event['payload'].get('evidence',{})
+        if (event['type']!='review_recorded' or event['payload'].get('verdict')!='APPROVE'
+                or evidence.get('verdict_alias')!='PASS' or evidence.get('evidence_epoch')!=item['epoch']):continue
+        marker='review-alias-published:'+str(event['seq'])
+        if kv(marker):continue
+        reference=item['release_id']+':'+item['kind']+':'+item['id']
+        kv('reviewed:'+reference+':'+item['head_sha'],{'verdict':'APPROVE','contract':REVIEW_CONTRACT},True)
+        if evidence.get('requires_fresh_ci'):kv('ci-queued:'+item['head_sha'],None,True)
+        client.request('POST',client.root+'/check-runs',{'name':'sdlc-independent-review','head_sha':item['head_sha'],
+                       'status':'completed','conclusion':'success','output':{'title':'Independent review PASS / APPROVE',
+                       'summary':evidence['report']['summary'][:58000]+'\n\nAuthenticated PASS normalized to APPROVE; source: '+evidence.get('url','')}})
+        kv(marker,True,True)
+
+
 def publish_result(p,client,control):
     file=OUT/"worker-result.json"
     if not file.exists():return None
@@ -389,7 +425,7 @@ def publish_result(p,client,control):
     else:release_id,kind,item_id,item=find_item(control,result["reference"])
     if role=="review":
         if result.get('review_contract')!=REVIEW_CONTRACT:raise ValueError('Review result belongs to a stale environment contract.')
-        if report['verdict']!='APPROVE' and not report['findings']:
+        if report['verdict'] not in {'APPROVE','PASS'} and not report['findings']:
             control.record_review_environment(release_id,item_id,result['revision'],result['worker_id'],
                     {'report':report,'execution':os.environ.get('GITHUB_RUN_ID'),'contract':REVIEW_CONTRACT},result['worker_id'],kind=kind)
             finish_recovery_cache(control)
@@ -397,10 +433,13 @@ def publish_result(p,client,control):
                            'status':'completed','conclusion':'failure','output':{'title':'Review environment blocked','summary':report['summary'][:60000]}})
             kv(marker,{'published':True,'environment_blocked':True},True);kv('queue:review:'+result['reference'],None,True)
             return {'processed_worker':role,'reference':result['reference'],'environment_blocked':True}
-        verdict="APPROVE" if report["verdict"]=="APPROVE" and not any(f["severity"] in {"critical","high","normal"} for f in report["findings"]) else "REQUEST_CHANGES"
-        control.record_review(release_id,item_id,result["revision"],result["worker_id"],verdict,{"report":report,"execution":os.environ.get("GITHUB_RUN_ID")},result["worker_id"],kind=kind)
+        verdict="APPROVE" if report["verdict"] in {"APPROVE","PASS"} and not any(f["severity"] in {"critical","high","normal"} for f in report["findings"]) else "REQUEST_CHANGES"
+        evidence={"report":report,"execution":os.environ.get("GITHUB_RUN_ID"),'contract':REVIEW_CONTRACT}
+        if verdict=='APPROVE' and report['verdict']=='PASS':evidence.update(verdict_alias='PASS',evidence_epoch=item['epoch'])
+        control.record_review(release_id,item_id,result["revision"],result["worker_id"],verdict,evidence,result["worker_id"],kind=kind)
         kv("reviewed:"+result["reference"]+":"+result["revision"],{"verdict":verdict,'contract':REVIEW_CONTRACT},True)
         client.request("POST",client.root+"/check-runs",{"name":"sdlc-independent-review","head_sha":result["revision"],"status":"completed","conclusion":"success" if verdict=="APPROVE" else "failure","output":{"title":"Independent agent review","summary":report["summary"][:60000]}})
+        if verdict=='APPROVE' and report['verdict']=='PASS':kv('review-alias-published:'+str(control.events(release_id)[-1]['seq']),True,True)
         number=int(item["pr_url"].rsplit("/",1)[1]);client.comment(number,"### Independent agent review\nVerdict: "+verdict+"\n\n"+report["summary"]+"\n\n"+"\n".join("- "+f["severity"]+": "+f["description"] for f in report["findings"]))
     elif role=="qa":
         if report["verdict"]=="PASS" and not report["findings"]:
@@ -485,6 +524,7 @@ def reconcile(p,args):
         except (ValueError,ControlError,TypeError):continue
     if p["execution_mode"]!="live" or not p["providers"]["live_execution_enabled"]:return {"mode":"dry-run","worker_result":processed,"queued":[],"note":"No paid model calls or merges are enabled."}
     require_live(p);scheduled=[]
+    reconcile_pass_aliases(p,client,control)
     for item in control.snapshot()['items']:
         if item['status']!='OPEN' or not item.get('head_sha') or item.get('lease_id'):continue
         try:
