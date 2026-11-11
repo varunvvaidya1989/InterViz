@@ -103,3 +103,41 @@ def source_handoff(client,run,item,plan_hash,download=download_artifact):
     result=unchanged_result(read_result(data),item,plan_hash)
     return result,{'run_id':run['id'],'run_attempt':run['run_attempt'],'artifact_id':artifact['id'],
                    'artifact_digest':artifact['digest'],'url':run['html_url']}
+
+
+def verified_pass_report(client,event,item,plan_hash,contract,download=download_artifact):
+    """Recover a genuine positive review, never infer success from a job label."""
+    evidence=event['payload'].get('evidence',{});report=evidence.get('report',{})
+    if report.get('verdict')!='PASS' or report.get('findings')!=[] or evidence.get('contract')!=contract:
+        raise ValueError('The source is not a positive current-contract review.')
+    run_id=str(evidence.get('execution',''))
+    if not run_id.isdigit():raise ValueError('Positive review lacks authenticated execution provenance.')
+    run=client.request('GET',client.root+'/actions/runs/'+run_id)
+    info=client.info();workflow=client.request('GET',client.root+'/actions/workflows/agent-control.yml')
+    if (run.get('workflow_id')!=workflow['id'] or run.get('path')!='.github/workflows/agent-control.yml'
+            or run.get('head_branch')!=info['default_branch'] or run.get('event')!='workflow_dispatch'
+            or run.get('status')!='completed' or run.get('conclusion')!='success'
+            or run.get('repository',{}).get('id')!=info['id'] or run.get('head_repository',{}).get('id')!=info['id']):
+        raise ValueError('Positive review is not from a completed trusted controller execution.')
+    artifacts=client.request('GET',client.root+'/actions/runs/'+run_id+'/artifacts')['artifacts']
+    name='sdlc-control-'+run_id+'-'+str(run['run_attempt'])
+    artifacts=[a for a in artifacts if a.get('name')==name and not a.get('expired')]
+    if len(artifacts)!=1:raise ValueError('Positive review lacks a unique retained result.')
+    artifact=artifacts[0];source=artifact.get('workflow_run',{})
+    if (source.get('id')!=run['id'] or source.get('head_sha')!=run['head_sha']
+            or source.get('repository_id')!=info['id'] or source.get('head_repository_id')!=info['id']):
+        raise ValueError('Positive review artifact provenance is stale.')
+    data=download(client,artifact)
+    if artifact.get('digest')!='sha256:'+hashlib.sha256(data).hexdigest():raise ValueError('Positive review artifact digest failed.')
+    result=read_result(data)
+    if not isinstance(result,dict):raise ValueError('Positive review result must be an object.')
+    validate_report(result.get('report'))
+    if (result.get('role')!='review' or result.get('reference')!=item['release_id']+':'+item['kind']+':'+item['id']
+            or result.get('revision')!=item['head_sha'] or result.get('worker_id')!=event['actor']
+            or result.get('plan_hash')!=plan_hash or result.get('review_contract')!=contract
+            or result.get('report')!=report or result.get('changed_paths')!=[]
+            or not result.get('baseline') or result.get('baseline')!=result.get('after') or not report.get('evidence')):
+        raise ValueError('Positive review result does not match its signed source, exact candidate and approved plan.')
+    return {'report':report,'execution':run_id,'contract':contract,'verdict_alias':'PASS',
+            'source_environment_event':event['seq'],'artifact_id':artifact['id'],
+            'artifact_digest':artifact['digest'],'url':run['html_url']}

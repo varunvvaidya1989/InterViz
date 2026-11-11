@@ -81,3 +81,10 @@ Review/QA candidates are Docker read-only mounts at /workspace. The harness outp
 Review commands use `git -C /workspace` and `PYTHONPATH=/workspace python3 -B`. Read-only source remains verified by the post-run scan. A blocked test environment with no confirmed code findings is recorded as unavailable evidence, not a code rejection; the required review check stays unsuccessful and the ledger cannot accept old evidence. Genuine defects still require rework.
 
 The lead-corrected contract immutable-candidate-writable-fixtures-v1 has its own existing two-attempt bound. Legacy attempt receipts remain unchanged. One automatic correction may reopen only a latest legacy BLOCKED review with empty findings and no other confirmed current-epoch rejection, on the same exact approved head/contract. The new epoch requires fresh review and CI. A repeated genuine rejection cannot be cleared by this correction. No coding attempt, approval, scope or budget is reset.
+
+
+## Successful review verdicts
+
+The shared report schema permits PASS and APPROVE. Both mean successful independent review when there are no blocking findings; the controller records canonical APPROVE while retaining the original report unchanged. Review prompts request APPROVE explicitly. BLOCKED/FAIL without findings still represent unavailable evidence, and any blocking finding still rejects acceptance.
+
+For a previously mislabeled PASS, reconciliation may replay only the latest same-task/head environment event under the current review contract. It authenticates the original completed run and retained artifact digest, exact report/reviewer/plan/contract and unchanged byte maps before recording the original independent execution's positive result. A later actual rejection, claim, submission or contract transition prevents replay. This does not rerun a model, reset limits or convert failed tests into a pass. Fresh CI is requested, and interruption-safe receipts finish publication of the truthful successful review check.
