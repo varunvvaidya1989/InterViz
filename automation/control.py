@@ -360,21 +360,24 @@ class Control:
             return self._decoded(self._item(db, release_id, item_id, kind))
 
     def recover_submission(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
-                           plan_hash, evidence, actor, kind="story"):
-        """Restore a proven unchanged prior submission; caller verifies hosted provenance.
+                           plan_hash, evidence, actor, kind="story", live_worker=False):
+        """Restore a proven unchanged prior submission after verified worker completion.
 
+        The controller verifies the live handoff or retained hosted provenance.
         This is not a claim/retry or acceptance. Historical attempts and evidence
         survive; a new epoch requires fresh independent review and CI.
         """
         _sha(head_sha);_sha(plan_hash,plan=True);_identity(worker_id);_identity(lease_id)
         raw=_evidence(evidence);_identity(actor)
+        _require(type(live_worker) is bool,'invalid_result','Live worker completion must be a boolean.')
         with self._tx() as db:
             release=self._release(db,release_id,True);self._approved(release)
             item=self._item(db,release_id,item_id,kind)
             _require(release['plan_approved_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash'],
                      'stale_plan','Recovery must preserve the exact approved plan and task contracts.')
             payload={'kind':kind,'item_id':item_id,'head_sha':head_sha,'pr_url':pr_url,
-                     'worker_id':worker_id,'lease_id':lease_id,'plan_hash':plan_hash,'evidence':json.loads(raw)}
+                     'worker_id':worker_id,'lease_id':lease_id,'plan_hash':plan_hash,'evidence':json.loads(raw),
+                     'live_worker':live_worker}
             for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='submission_recovered' ORDER BY seq DESC",(release_id,)):
                 if json.loads(row['payload'])==payload:
                     _require(item['head_sha']==head_sha and item['status'] in ('SUBMITTED','INTEGRATED','DONE'),
@@ -384,8 +387,12 @@ class Control:
                      'invalid_stage','Only an interrupted resubmission to its original PR can be recovered.')
             _require(item['lease_id']==lease_id and item['lease_worker']==worker_id,
                      'invalid_lease','Recovery evidence does not match the interrupted worker lease.')
-            _require(item['lease_until'] is not None and item['lease_until']<=self.clock(),
-                     'lease_active','Cannot recover an active worker lease.')
+            if live_worker:
+                _require(actor==worker_id and item['lease_until'] is not None and item['lease_until']>self.clock(),
+                         'invalid_lease','Live resubmission requires its completed worker and current lease.')
+            else:
+                _require(item['lease_until'] is not None and item['lease_until']<=self.clock(),
+                         'lease_active','Cannot recover an active worker lease.')
             prior=None
             for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='pr_head_associated' ORDER BY seq DESC",(release_id,)):
                 value=json.loads(row['payload'])

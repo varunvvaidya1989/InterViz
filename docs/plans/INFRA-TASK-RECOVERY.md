@@ -67,3 +67,9 @@ was advisory (HMAC not checked locally); authoritative restoration remains insid
 the signed hosted controller. No remote state, attempt count, approval, merge or
 deployment was changed during this verification. Activation is pending reviewed
 integration into trusted main.
+
+Independent review of the first revision found a live-publication interruption
+window between SUBMITTED and scheduling-cache cleanup. Both live and archived
+unchanged publication now record the durable recovery event in the same ledger
+transaction. A real-clone interruption fixture verifies that reconciliation
+finishes cache cleanup after a crash while preserving all attempts and history.

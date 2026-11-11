@@ -311,18 +311,16 @@ def recover_result(p,client,control,item,result,source=None):
     git(['checkout','--detach',result['revision']],home)
     if git(['rev-parse','HEAD'],home)!=result['revision'] or scan_files(home)!=result['after']:
         raise ValueError('Recovery artifact bytes do not match the exact trusted candidate.')
-    if source:
-        restored=control.recover_submission(release_id,item['id'],result['revision'],item['pr_url'],
-                    result['worker_id'],result['lease_id'],plan_hash,source,'controller:recovery',kind=item['kind'])
-    else:
-        restored=control.associate_pr(release_id,item['id'],result['revision'],item['pr_url'],
-                    result['worker_id'],result['worker_id'],kind=item['kind'],lease_id=result['lease_id'])
+    evidence=source or {'execution':os.environ.get('GITHUB_RUN_ID','local-fixture'),'handoff_sha256':digest(result)}
+    restored=control.recover_submission(release_id,item['id'],result['revision'],item['pr_url'],
+                result['worker_id'],result['lease_id'],plan_hash,evidence,
+                'controller:recovery' if source else result['worker_id'],kind=item['kind'],live_worker=not bool(source))
     # Cache invalidation is not history deletion: old reviews/CI remain in the
     # audit ledger and cannot certify the new submission epoch.
     for key in ('reviewed:'+reference+':'+result['revision'],'ci-queued:'+result['revision'],
                 'queue:review:'+reference,'queue:'+result['role']+':'+reference):
         kv(key,None,True)
-    if source:kv('recovery-cache-done:'+result['lease_id'],True,True)
+    kv('recovery-cache-done:'+result['lease_id'],True,True)
     return restored
 
 

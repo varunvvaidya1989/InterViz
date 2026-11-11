@@ -80,6 +80,8 @@ class RecoveryTests(unittest.TestCase):
                 before=self.control.snapshot()
                 with self.assertRaises(ControlError):self.restore(**change)
                 self.assertEqual(self.control.snapshot(),before)
+        self.now=1000
+        with self.assertRaises(ControlError):self.restore(live_worker=True,actor='different-worker')
 
     def test_restore_is_idempotent_but_cannot_erase_a_new_rejection(self):
         self.now=1061;self.restore();count=len(self.control.events());self.restore()
@@ -194,3 +196,22 @@ class RecoveryTests(unittest.TestCase):
             restored=cli.recover_result({'repository':{'default_branch':'main'}},client,c,item,result,self.source)
             self.assertEqual(restored['status'],'SUBMITTED');self.assertEqual(restored['attempts'],2)
             self.assertTrue(values['recovery-cache-done:'+item['lease_id']])
+
+            # The live path must write the same durable recovery event atomically.
+            # Otherwise a crash after SUBMITTED leaves old review receipts stuck.
+            c.create_release('R-3','Third','lead');c.upsert_story('R-3','S3','Live',SCOPE,[],'lead')
+            c.submit_plan('R-3',PLAN,'lead');c.approve_plan('R-3',PLAN,'founder')
+            first=c.claim('R-3','S3','first',lease_seconds=60)
+            c.associate_pr('R-3','S3',head,PR,'first','controller',lease_id=first['lease_id'])
+            c.record_review('R-3','S3',head,'reviewer','REQUEST_CHANGES',{'fixture':'checkout'},'reviewer')
+            live=c.claim('R-3','S3','second',lease_seconds=60)
+            live_result={**result,'reference':'R-3:story:S3','lease_id':live['lease_id']}
+            key='reviewed:R-3:story:S3:'+head;values[key]={'verdict':'REQUEST_CHANGES'}
+            with patch.object(cli,'kv',side_effect=RuntimeError('fixture cache interruption')):
+                with self.assertRaisesRegex(RuntimeError,'cache interruption'):
+                    cli.recover_result({'repository':{'default_branch':'main'}},client,c,live,live_result)
+            self.assertEqual(c.snapshot('R-3')['items'][0]['status'],'SUBMITTED')
+            self.assertEqual(values[key],{'verdict':'REQUEST_CHANGES'})
+            self.assertTrue(any(e['type']=='submission_recovered' for e in c.events('R-3')))
+            cli.finish_recovery_cache(c)
+            self.assertIsNone(values[key]);self.assertTrue(values['recovery-cache-done:'+live['lease_id']])
