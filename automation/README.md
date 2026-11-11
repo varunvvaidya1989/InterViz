@@ -72,3 +72,12 @@ For an older interrupted publication, the trusted controller can recover the ret
 The transition preserves attempts, budgets and historical reviews/CI. A fresh evidence epoch requires fresh exact-head independent review and a new CI run; no old success is reused. Recovery has at most the configured two attempts per interrupted lease and cannot reopen a subsequent genuine review rejection. Audit-backed scheduling-cache cleanup survives an interrupted recovery. Exhausted/expired leases that cannot recover are escalated to the lead.
 
 After an infrastructure controller update is reviewed and merged to main, the push event runs reconciliation immediately; scheduled reconciliation remains a fallback. No founder command comment, copied hash, counter reset or local signed-state edit is needed. Protected-path acceptance still governs merging the recovered PR; restored submission is not acceptance or milestone completion.
+
+
+## Review fixtures and environment failures
+
+Review/QA candidates are Docker read-only mounts at /workspace. The harness output directory is mounted separately as writable /review, the agent working directory, with /tmp available for test fixtures. Codex uses network-restricted workspace-write within those container bounds; this does not make candidate source writable. Python bytecode writes are disabled. Before any paid call, a key-free nested sandbox probe creates a SQLite fixture and confirms candidate writes fail.
+
+Review commands use `git -C /workspace` and `PYTHONPATH=/workspace python3 -B`. Read-only source remains verified by the post-run scan. A blocked test environment with no confirmed code findings is recorded as unavailable evidence, not a code rejection; the required review check stays unsuccessful and the ledger cannot accept old evidence. Genuine defects still require rework.
+
+The lead-corrected contract immutable-candidate-writable-fixtures-v1 has its own existing two-attempt bound. Legacy attempt receipts remain unchanged. One automatic correction may reopen only a latest legacy BLOCKED review with empty findings and no other confirmed current-epoch rejection, on the same exact approved head/contract. The new epoch requires fresh review and CI. A repeated genuine rejection cannot be cleared by this correction. No coding attempt, approval, scope or budget is reset.

@@ -53,6 +53,12 @@ class DashboardTests(unittest.TestCase):
     def test_integrated_is_separate_from_release_qa(self):
         self.assertEqual(classify({'status':'INTEGRATED'}, {}, {})[0],'integrated')
 
+    def test_recovered_submission_ignores_historical_same_head_rejection(self):
+        item={'status':'SUBMITTED','head_sha':'abc','epoch':4,'attempts':2,'max_attempts':2,'scope':{},'depends_on':[]}
+        old={'head_sha':'abc','epoch':3,'verdict':'REQUEST_CHANGES'}
+        self.assertEqual(classify(item,{}, {},old)[0],'reviewing')
+        self.assertEqual(classify(item,{}, {},{**old,'epoch':4})[0],'rework')
+
     def test_orphaned_lease_is_not_reported_as_an_active_agent(self):
         item={'status':'IN_PROGRESS','lease_until':1000,'updated_at':100}
         self.assertEqual(classify(item,{}, {},now=200,worker_active=False)[0],'blocked')

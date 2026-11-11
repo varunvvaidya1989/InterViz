@@ -407,6 +407,46 @@ class Control:
             self._event(db,release_id,'submission_recovered',actor,payload)
             return self._decoded(self._item(db,release_id,item_id,kind))
 
+    def reopen_blocked_review(self, release_id, item_id, head_sha, contract, actor, kind='story'):
+        """Lead-corrected environment contract; never reopen confirmed code findings."""
+        _sha(head_sha);_identity(contract);_identity(actor)
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            item=self._item(db,release_id,item_id,kind)
+            _require(item['status']=='OPEN' and item['head_sha']==head_sha and not item['lease_id'],
+                     'invalid_stage','Only an unleased current review rejection can be re-evaluated.')
+            _require(self._scope_hash(db,release_id)==release['plan_scope_hash'],'stale_plan','The approved task contracts changed.')
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='review_contract_corrected'",(release_id,)):
+                old=json.loads(row['payload'])
+                _require(not (old['kind']==kind and old['item_id']==item_id and old['head_sha']==head_sha and old['contract']==contract),
+                         'contract_already_used','This review contract already received its bounded correction.')
+            rows=list(db.execute('SELECT * FROM reviews WHERE release_id=? AND kind=? AND item_id=? AND head_sha=? AND epoch=? ORDER BY seq',
+                                 (release_id,kind,item_id,head_sha,item['epoch'])))
+            def blocked(row):
+                report=json.loads(row['evidence']).get('report')
+                return isinstance(report,dict) and report.get('verdict')=='BLOCKED' and report.get('findings')==[]
+            _require(rows and rows[-1]['verdict']=='REQUEST_CHANGES' and blocked(rows[-1])
+                     and all(r['verdict']!='REQUEST_CHANGES' or blocked(r) for r in rows),
+                     'code_findings_present','Only unavailable environment evidence without code findings can be reopened.')
+            db.execute("UPDATE items SET status='SUBMITTED',epoch=epoch+1,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'review_contract_corrected',actor,{'kind':kind,'item_id':item_id,'head_sha':head_sha,
+                        'contract':contract,'previous_review_seq':rows[-1]['seq']})
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
+    def record_review_environment(self, release_id, item_id, head_sha, reviewer_id, evidence, actor, kind='story'):
+        _sha(head_sha);raw=_evidence(evidence);_identity(reviewer_id);_identity(actor)
+        with self._tx() as db:
+            self._release(db,release_id,True);item=self._item(db,release_id,item_id,kind)
+            _require(item['status']=='SUBMITTED' and item['head_sha']==head_sha,'stale_head','The review target changed.')
+            _require(actor==reviewer_id and reviewer_id not in json.loads(item['author_ids']),'self_review','Environment report must come from the independent execution.')
+            db.execute('UPDATE items SET epoch=epoch+1,updated_at=? WHERE release_id=? AND kind=? AND id=?',
+                       (self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'review_environment_blocked',actor,{'kind':kind,'item_id':item_id,'head_sha':head_sha,'evidence':json.loads(raw)})
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
     def record_review(self, release_id, item_id, head_sha, reviewer_id, verdict, evidence, actor, kind="story"):
         _sha(head_sha); raw = _evidence(evidence); _identity(reviewer_id, "reviewer")
         _require(verdict in ("APPROVE", "REQUEST_CHANGES"), "invalid_verdict", "Review verdict must be APPROVE or REQUEST_CHANGES.")

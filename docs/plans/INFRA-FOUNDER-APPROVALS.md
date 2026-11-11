@@ -57,3 +57,9 @@ Read-only live preview on port 8011 loaded 36 current tasks, the existing approv
 plan, and the blocked M1-OPS-101 task. It correctly disabled approval dispatch
 because the new workflow is not yet on main. No live approval, task reset,
 production enablement or deployment has been performed.
+
+Recovery integration: merge the independently reviewed task recovery and fixture
+sandbox corrections without changing approval semantics. Match dashboard review
+history by both exact head and current evidence epoch; preserved old rejections
+must not label a newly restored submission as code rework. A regression fixture
+covers same-head old-epoch rejection versus a current-epoch rejection.

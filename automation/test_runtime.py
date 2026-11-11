@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from automation.control import Control
 from automation.github import GitHubError,SnapshotStore,sign_snapshot,verify_snapshot,repository_name
-from automation.providers import DockerAgent,check_changed_paths,sanitized_environment,validate_report
+from automation.providers import DockerAgent,check_changed_paths,sanitized_environment,validate_report,REVIEW_CONTRACT
 from automation.runtime import digest,plan_document,scan_files,publish_copy
 from automation import cli
 
@@ -74,7 +74,8 @@ class RuntimeTests(unittest.TestCase):
                 control.snapshot.return_value={'releases':[{'plan_approved_hash':'approved'}]}
                 item={'status':'SUBMITTED','head_sha':target,'scope':{'allowed_paths':['candidate.txt']}}
                 args=argparse.Namespace(role='review',task_id='R:story:S',revision=target)
-                values={'queue:review:R:story:S':{'revision':target,'diff':'authenticated candidate diff'}}
+                legacy='worker-attempt:review:R:story:S:'+target
+                values={'queue:review:R:story:S':{'revision':target,'diff':'authenticated candidate diff','review_contract':REVIEW_CONTRACT},legacy:2}
                 def kv(key,value=None,write=False):
                     if write:values[key]=value
                     return values.get(key)
@@ -111,6 +112,8 @@ class RuntimeTests(unittest.TestCase):
                         self.assertEqual(result['revision'],target)
                         self.assertEqual(result['changed_paths'],[])
                         agent.assert_called_once()
+                        self.assertEqual(values[legacy],2)
+                        self.assertEqual(values[legacy+':'+REVIEW_CONTRACT],1)
                 self.assertEqual(real_git(['rev-parse','HEAD'],root),baseline)
 
     def test_credentials_never_reach_provider_subprocess(self):
@@ -120,7 +123,13 @@ class RuntimeTests(unittest.TestCase):
     def test_provider_command_is_bounded_and_review_is_read_only(self):
         command=DockerAgent().command(Path.cwd(),'review','codex')
         self.assertIn('--cap-drop=ALL',command);self.assertIn('--memory=4g',command)
-        self.assertEqual(command[command.index('--sandbox')+1],'read-only')
+        self.assertEqual(command[command.index('--sandbox')+1],'workspace-write')
+        mounts=[command[i+1] for i,value in enumerate(command) if value=='--mount']
+        self.assertTrue(any(value.endswith('target=/workspace,readonly') for value in mounts))
+        self.assertTrue(any(value.endswith('target=/review') for value in mounts))
+        self.assertEqual(command[command.index('--workdir')+1],'/review')
+        self.assertIn('--skip-git-repo-check',command)
+        self.assertIn('sandbox_workspace_write.writable_roots=["/tmp"]',command)
         self.assertNotIn('--dangerously-bypass-approvals-and-sandbox',command)
         self.assertNotIn('GH_TOKEN',' '.join(command));self.assertNotIn('docker.sock',' '.join(command))
         self.assertIn('CODEX_API_KEY',command)

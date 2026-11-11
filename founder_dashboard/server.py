@@ -47,12 +47,12 @@ def read_ledger(envelope, signing_key=None):
         db.execute('PRAGMA query_only=ON')
         db.row_factory = sqlite3.Row
         releases = [dict(r) for r in db.execute('SELECT id,title,state,plan_hash,plan_approved_hash,plan_approved_by,qa_passed,qa_sha,candidate_sha,release_approved_sha,integration_sha,created_at,updated_at FROM releases')]
-        items = [dict(r) for r in db.execute('SELECT release_id,kind,id,title,scope,depends_on,status,head_sha,pr_url,attempts,max_attempts,lease_until,lease_started,lease_worker,updated_at FROM items')]
+        items = [dict(r) for r in db.execute('SELECT release_id,kind,id,title,scope,depends_on,status,head_sha,epoch,pr_url,attempts,max_attempts,lease_until,lease_started,lease_worker,updated_at FROM items')]
         for item in items:
             item['scope'] = json.loads(item['scope'])
             item['depends_on'] = json.loads(item['depends_on'])
         kv = {r['key']: json.loads(r['value']) for r in db.execute("SELECT key,value FROM runtime_kv WHERE key LIKE 'plan:%' OR key LIKE 'candidate:%' OR key LIKE 'release-manifest-approval:%' OR key LIKE 'work-issue:%' OR key LIKE 'bug-issue:%' OR key LIKE 'queue:%'")}
-        reviews = [dict(r) for r in db.execute('SELECT release_id,kind,item_id,head_sha,verdict,evidence,created_at FROM reviews ORDER BY seq')]
+        reviews = [dict(r) for r in db.execute('SELECT release_id,kind,item_id,head_sha,epoch,verdict,evidence,created_at FROM reviews ORDER BY seq')]
         events = [dict(r) for r in db.execute('SELECT release_id,type,actor,created_at FROM events ORDER BY seq DESC LIMIT 60')]
         return {'releases': releases, 'items': items, 'kv': kv, 'reviews': reviews, 'events': events,
                 'verification': 'signature_verified' if signing_key else 'github_authenticated_checksum_verified'}
@@ -73,7 +73,8 @@ def classify(item, release, items, review=None, application_configured=False, no
         return 'running', 'A worker holds the task lease.'
     if status == 'OPEN' and item['attempts'] >= item['max_attempts']:
         return 'blocked', 'Attempt limit reached; lead intervention is required.'
-    if review and review['verdict'] == 'REQUEST_CHANGES' and review['head_sha'] == item.get('head_sha'):
+    if (review and review['verdict'] == 'REQUEST_CHANGES' and review['head_sha'] == item.get('head_sha')
+            and review.get('epoch',0)==item.get('epoch',0)):
         return 'rework', 'Independent reviewer requested changes.'
     if status == 'SUBMITTED':
         return 'reviewing', 'PR submitted; waiting for review, CI or integration.'
@@ -230,6 +231,8 @@ def collect(client):
     for item in ledger['items']:
         peers = {i['id']: i for i in ledger['items'] if i['release_id'] == item['release_id'] and i['kind'] == 'story'}
         review = review_map.get((item['release_id'], item['kind'], item['id']))
+        if review and (review['head_sha']!=item.get('head_sha') or review.get('epoch')!=item.get('epoch')):
+            review=None
         worker_active = any(r['status'] == 'in_progress' and r['name'] in ('SDLC - Agent control','SDLC - Staging QA','SDLC - Review and integration') for r in running)
         state, reason = classify(item, release_map[item['release_id']], peers, review, policy['checks']['application_configured'], worker_active=worker_active)
         scope = item['scope']
