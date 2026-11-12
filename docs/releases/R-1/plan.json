@@ -1,0 +1,1745 @@
+{
+  "release_id": "R-1",
+  "title": "M1-FOUNDATION — revised executable foundation plan",
+  "milestone": "M1",
+  "status": "PROPOSED_PLANNING_ONLY",
+  "target_revision": "ba8062a750c83247d0694ac7febe4e0758d4bd85",
+  "supersedes_plan_hash": "cd805d9f9e9db6d774a417fc38c2266735f20ce5bb6f297cf67448c0f42dedd7",
+  "source": {
+    "specification": "planning/Systems Labs Product Specification.md",
+    "specification_sha256": "31afbaa2528e21e984332d86629d493d7b4d6aaec38853c6fcb796714a581017",
+    "starting_plan": "docs/plans/M1.md",
+    "runtime_contract": "automation/README.md",
+    "trusted_policy": "automation/policy.json",
+    "accepted_contracts": [
+      "docs/decisions.md",
+      "docs/data/DATA_CONTRACTS.md",
+      "docs/design/LEARNING_EXPERIENCE_CONTRACT.md",
+      "docs/operations/DELIVERY_GATES.md"
+    ]
+  },
+  "authority": {
+    "founder_plan_approval": null,
+    "application_implementation_authorized": false,
+    "worker_write_scope": [
+      "docs/releases/R-1"
+    ],
+    "stop_after": "M1",
+    "publication": "Trusted controller alone may publish revised PR and approval command; bounded worker cannot GitHub/push/merge/deploy."
+  },
+  "scope": {
+    "included": [
+      "Typed workspace, real SaaS CI and controller prerequisites",
+      "Accessible translated design system",
+      "Full auth/database",
+      "Skippable onboarding/profile and empty dashboard",
+      "Privacy/observability/anti-abuse foundation",
+      "Actual staging/recovery/independent QA"
+    ],
+    "excluded": [
+      "M2+",
+      "Payments/commercial launch",
+      "AI tutor/coach",
+      "Visualizer/lab/mastery implementations",
+      "Admin/content publication",
+      "Prototype migration/retirement",
+      "Production deployment/publication"
+    ]
+  },
+  "product_stories": [
+    {
+      "id": "US-01",
+      "title": "Reproducible app and trustworthy delivery",
+      "requirements": [
+        "FND-001",
+        "GOV-001",
+        "GOV-002",
+        "GOV-003",
+        "GOV-004"
+      ],
+      "acceptance": [
+        "Clean install/build and real trusted CI, supported amendment and candidate evidence."
+      ],
+      "child_tasks": [
+        "M1-OPS-101",
+        "M1-OPS-102",
+        "M1-OPS-103",
+        "M1-OPS-104",
+        "M1-OPS-105",
+        "M1-OPS-106",
+        "M1-OPS-107",
+        "M1-OPS-108",
+        "M1-OPS-109",
+        "M1-OPS-110",
+        "M1-LEAD-101",
+        "M1-OPS-111",
+        "M1-OPS-112",
+        "M1-OPS-113",
+        "M1-OPS-114",
+        "M1-OPS-115"
+      ]
+    },
+    {
+      "id": "US-02",
+      "title": "Safe accessible complete identity lifecycle",
+      "requirements": [
+        "FND-002",
+        "FND-003",
+        "FND-004",
+        "NFR-001",
+        "NFR-002",
+        "NFR-007"
+      ],
+      "acceptance": [
+        "Email/password/verify/reset/Google/GitHub and sessions work with server security."
+      ],
+      "child_tasks": [
+        "M1-UX-101",
+        "M1-CODE-101",
+        "M1-CODE-102",
+        "M1-CODE-103",
+        "M1-CODE-104",
+        "M1-CODE-105",
+        "M1-CODE-106",
+        "M1-CODE-107",
+        "M1-CODE-108",
+        "M1-CODE-109",
+        "M1-CODE-110",
+        "M1-CODE-111"
+      ]
+    },
+    {
+      "id": "US-03",
+      "title": "Background onboarding and honest empty dashboard",
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "FND-008"
+      ],
+      "acceptance": [
+        "Skippable editable persistent profile, normal <60s SHOULD, distinct empty progress states."
+      ],
+      "child_tasks": [
+        "M1-UX-102",
+        "M1-CODE-112",
+        "M1-CODE-113",
+        "M1-CODE-114"
+      ]
+    },
+    {
+      "id": "US-04",
+      "title": "Private data control and safe telemetry",
+      "requirements": [
+        "NFR-003",
+        "NFR-004",
+        "NFR-005"
+      ],
+      "acceptance": [
+        "Recent-auth export/deletion, session revocation, restore suppression and consent."
+      ],
+      "child_tasks": [
+        "M1-CODE-115",
+        "M1-CODE-116",
+        "M1-CODE-117",
+        "M1-CODE-118"
+      ]
+    }
+  ],
+  "user_stories": [
+    {
+      "id": "M1-OPS-101",
+      "title": "Transactional policy-only started-release amendment",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/control.py",
+        "automation/test_amendment.py"
+      ],
+      "acceptance": [
+        "Add founder-authenticated Control.amend_plan(release_id,expected_old_hash,new_hash,actor), transactional CAS and idempotency; only identical item contracts/dependencies permitted.",
+        "Preserve item IDs/status/attempts/max_attempts/epochs/authors/integration SHA/reviews/CI and audit history. Clear active plan/QA/candidate/release approvals; reject active leases, stale CAS and contract changes."
+      ],
+      "tests": [
+        "Port proposed amendment tests; unauthorized/stale/CAS/replay/restart/active-lease/scope-change negatives; snapshot preservation."
+      ],
+      "depends_on": [],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-102",
+      "title": "Authenticated amendment command and current-hash barriers",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/cli.py",
+        "automation/test_amendment_cli.py",
+        "automation/README.md"
+      ],
+      "acceptance": [
+        "Implement proposed /sdlc amend-plan RELEASE PATH EXPECTED_OLD_HASH in authenticated event and scheduled replay; recompute canonical manifest/spec/policy hash from trusted committed bytes and validate unchanged contracts before ledger amend.",
+        "Publish new canonical plan record with ledger transaction/replay recovery; gate reconcile scheduling, execution, integration and QA on matching submitted+approved current hash. Preserve attempts/queue receipts; never revise-plan started work.",
+        "Shared CLI helper contract is cli.amend_plan(policy,control,path,expected_old_hash,authenticated_actor); proposed_tests/test_amendment_cli.py supplies executable canonical resubmission regression; add actual worker/reconcile no-side-effect negatives, not only predicate tests."
+      ],
+      "tests": [
+        "Fake authenticated event and scheduled replay against real temp ledger: policy change blocks dispatch, completed items survive, new submitted hash approves, old rejects, only renewed approval resumes; crash replay one audit effect."
+      ],
+      "depends_on": [
+        "M1-OPS-101"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-103",
+      "title": "Trusted application CI aggregation",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/ci.py",
+        "automation/cli.py",
+        "automation/test_application_ci.py"
+      ],
+      "acceptance": [
+        "Aggregate each required application check using authenticated repository/PR/head/workflow ID/default-branch workflow blob/run ID/attempt/job facts; latest rerun supersedes prior success.",
+        "Missing/pending/failed/skipped/cancelled/stale/forged checks never pass. Keep infrastructure checks distinct; record aggregate ledger CI true only after all required current-head checks. New head invalidates evidence; changed workflow cannot certify itself."
+      ],
+      "tests": [
+        "Fake API through actual reconcile/record_ci_run to real ledger: missing/failed/stale/forged block integration; all trusted current checks + independent review permit gate; later failed rerun revokes."
+      ],
+      "depends_on": [
+        "M1-OPS-102"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-104",
+      "title": "Bot PR application workflow dispatch",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/cli.py",
+        "automation/test_ci_dispatch.py",
+        ".github/workflows/application-ci.yml",
+        ".github/workflows/infrastructure-ci.yml",
+        ".github/workflows/agent-control.yml"
+      ],
+      "acceptance": [
+        "Explicit bot-compatible workflow_dispatch for both workflows, queued PR/head receipts, exact checkout assertion and idempotent missed-event recovery.",
+        "Trusted workflow definition, no PR secrets/arbitrary commands, least permissions; six application jobs from OPERATIONS.md run nonempty suites. Infrastructure bootstrap uses existing infrastructure gates plus clean local smoke until registration."
+      ],
+      "tests": [
+        "Bot-created PR queues both workflows once/head; wrong/stale head rejected; actionlint/job-name mapping tests; protected workflow changes require separate founder acceptance."
+      ],
+      "depends_on": [
+        "M1-OPS-103"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-105",
+      "title": "Exact deployed-candidate staging validation",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/staging.py",
+        "automation/cli.py",
+        "automation/test_staging_candidate.py",
+        ".github/workflows/staging-qa.yml",
+        "infra/staging/adapter.py"
+      ],
+      "acceptance": [
+        "Define deploy/inspect/validate transport contract and trusted receipt binding commit/image digest/migration/environment/URL/time/workflow execution.",
+        "Inspect actual deployed artifact before/after remote smoke; missing adapter/secrets, wrong/stale digest/host/candidate fails closed. Local checks/model PASS never substitute; retain failed validation as failed workflow."
+      ],
+      "tests": [
+        "Fake transport through staging CLI tests for matching receipt, changed deployment during test, missing/wrong commit/digest/env and forged/local-only evidence; actual staging later."
+      ],
+      "depends_on": [
+        "M1-OPS-104"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-106",
+      "title": "Release-stage QA lifecycle regression and scheduling",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/cli.py",
+        "automation/test_release_lifecycle.py",
+        "automation/README.md"
+      ],
+      "acceptance": [
+        "QA/final acceptance are release stages outside implementation ledger items. All integrated items trigger start_qa at current integration SHA and independent QA dispatch once.",
+        "Failed QA creates scoped parent-linked bugs; reviewed fixes produce fresh candidate QA. Final acceptance requires complete_qa PASS and complete evidence; report persistence cannot mutate application candidate or block QA."
+      ],
+      "tests": [
+        "Port executable proposed lifecycle test; extend fake reconcile/QA publication through auto scheduling, failed bug, independently reviewed fix, fresh QA, acceptance blocked before pass and eligible after."
+      ],
+      "depends_on": [
+        "M1-OPS-105"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-107",
+      "title": "Pinned workspace package skeletons",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "apps/web/package.json",
+        "apps/web/tsconfig.json",
+        "apps/web/next.config.ts",
+        "packages/db/package.json",
+        "packages/db/tsconfig.json",
+        "packages/ui/package.json",
+        "packages/ui/tsconfig.json",
+        "packages/i18n/package.json",
+        "packages/i18n/tsconfig.json"
+      ],
+      "acceptance": [
+        "Verify compatible supported versions against official docs during approved implementation, pin runtime/packageManager/engines/dependencies and frozen lockfile.",
+        "TypeScript Next.js/React, PostgreSQL/Drizzle/Zod/Better Auth/Redis, Vitest/Playwright/Storybook; preserve prototype, M1 packages only; sole manifest writer."
+      ],
+      "tests": [
+        "Clean frozen install and package-resolution/type smoke."
+      ],
+      "depends_on": [
+        "M1-OPS-106"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-108",
+      "title": "Nonempty app checks and isolated local services",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "eslint.config.mjs",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "compose.yaml",
+        "apps/web/src/app/layout.tsx",
+        "apps/web/src/app/page.tsx",
+        "apps/web/src/app/api/v1/health",
+        "apps/web/tests/bootstrap",
+        "packages/i18n/tests/check-keys.ts",
+        "docs/operations/M1/workspace.md"
+      ],
+      "acceptance": [
+        "Expose lint/typecheck/test:unit/test:integration/test:e2e/build/check:i18n/check:security; no passWithNoTests; isolated PostgreSQL/Redis/mail capture and synthetic credentials.",
+        "Nonempty shell/health/browser smoke; liveness independent from readiness, no connection leakage. Handoff layout/page leases only after integration."
+      ],
+      "tests": [
+        "Run every root check on shell; stop DB and assert readiness failure/liveness success; clean service isolation."
+      ],
+      "depends_on": [
+        "M1-OPS-107"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-109",
+      "title": "Allowlisted learner image",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "Dockerfile",
+        ".dockerignore",
+        "infra/containers/test_image.py",
+        "docs/operations/M1/image.md"
+      ],
+      "acceptance": [
+        "Multistage app image uses explicit app/package copy inputs, nonroot runtime; exclude prototype/PDF/.git/.sdlc/automation/private corpus/secrets.",
+        "Learner runtime cannot access controller tools/network/state; preserve prototype unchanged."
+      ],
+      "tests": [
+        "Build/inspect image filesystem/layers and health probe with isolated services."
+      ],
+      "depends_on": [
+        "M1-OPS-108"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-110",
+      "title": "Protected application check registration",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "automation/policy.json",
+        "docs/operations/M1/checks.md"
+      ],
+      "acceptance": [
+        "Only after accepted workflow/reconciliation/nonempty smoke, register six real required SaaS jobs/commands and set application_configured. Preserve founder IDs/scope/budgets/gates; staging configured remains false until target ready.",
+        "Separate founder protected acceptance and independent review mandatory. Policy integration halts dispatch; use implemented amend-plan then fresh approve-plan before application tasks."
+      ],
+      "tests": [
+        "Policy validator/job mapping, clean application scripts, amendment tests at changed policy; no infrastructure-only SaaS acceptance."
+      ],
+      "depends_on": [
+        "M1-OPS-109"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 12,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-LEAD-101",
+      "title": "Resolve M1 contracts and serial ownership",
+      "parent_story": "US-01",
+      "role": "lead",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/plans/M1.md",
+        "docs/decisions.md",
+        "docs/contracts/M1"
+      ],
+      "acceptance": [
+        "Record exact approved plan/spec/policy and real existing Git baseline; replace stale no-runner/pre-Git assumptions.",
+        "Adopt ARCHITECTURE contracts, evidence mapping and exclusive path leases; bases resolve to integrated predecessor, never blindly planning base."
+      ],
+      "tests": [
+        "Contract/requirement/path mapping review."
+      ],
+      "depends_on": [
+        "M1-OPS-110"
+      ],
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-004"
+      ],
+      "estimate_worker_minutes": 12,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-UX-101",
+      "title": "Identity screen contracts",
+      "parent_story": "US-02",
+      "role": "ui-ux",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/design/M1/identity.md"
+      ],
+      "acceptance": [
+        "Expand UX.md auth flows into field/component/focus and English-key inventory, incl mail/provider failures.",
+        "Specify 320/768/1280 layouts, WCAG2.2AA keyboard/screen-reader, themes/contrast and accessible bot controls."
+      ],
+      "tests": [
+        "State walk-through and contrast review."
+      ],
+      "depends_on": [
+        "M1-LEAD-101"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-003",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 12,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-UX-102",
+      "title": "Learner and privacy screen contracts",
+      "parent_story": "US-03",
+      "role": "ui-ux",
+      "kind": "application",
+      "allowed_paths": [
+        "docs/design/M1/learner.md"
+      ],
+      "acceptance": [
+        "Specify onboarding skip/save/edit/conflict, truthful empty dashboard, privacy export/delete states and translation keys.",
+        "Design normal onboarding under 60s; profile one action away, no fabricated scores or unusable future-feature action."
+      ],
+      "tests": [
+        "Timed design walk-through and keyboard/mobile matrix."
+      ],
+      "depends_on": [
+        "M1-UX-101"
+      ],
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-007",
+        "FND-008"
+      ],
+      "estimate_worker_minutes": 12,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-101",
+      "title": "Identity profile and audit schema",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/db/src/schema",
+        "packages/db/src/index.ts",
+        "packages/db/drizzle.config.ts",
+        "packages/db/tests/schema.test.ts"
+      ],
+      "acceptance": [
+        "Use pinned documented auth adapter schema and unique normalized identity/provider constraints; no future content/progress/grant tables.",
+        "Profile background/level/goal/date/locale/onboarding/version; minimal pseudonymous audit actor/action/target/time, no secret payload."
+      ],
+      "tests": [
+        "Constraint/adapter compatibility and duplicate identity tests."
+      ],
+      "depends_on": [
+        "M1-UX-102"
+      ],
+      "requirements": [
+        "FND-004"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-102",
+      "title": "Ordered migrations and restricted database roles",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/db/src/migrations",
+        "packages/db/tests/migrations.test.ts",
+        "docs/contracts/M1/migrations.md"
+      ],
+      "acceptance": [
+        "Single migration sequence owner; empty/seeded upgrades preserve account evidence.",
+        "Separate migration/runtime roles; compatible expansion rollback and deletion replay documented."
+      ],
+      "tests": [
+        "Fresh+seeded migration, uniqueness and least-privilege integration."
+      ],
+      "depends_on": [
+        "M1-CODE-101"
+      ],
+      "requirements": [
+        "FND-004",
+        "NFR-001",
+        "NFR-005"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-103",
+      "title": "Validated errors config and shared limits",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/config",
+        "apps/web/src/server/errors",
+        "apps/web/src/server/rate-limit",
+        "apps/web/tests/server-boundaries"
+      ],
+      "acceptance": [
+        "Zod config/input and typed safe errors; no sensitive log bodies.",
+        "Atomic shared per-route Redis limits, signup bot safeguards/accessible fallback and minimal account-sharing signals; Redis outage fails closed/retryable."
+      ],
+      "tests": [
+        "Malformed config, concurrent rate/bot replay, Redis outage and log redaction."
+      ],
+      "depends_on": [
+        "M1-CODE-102"
+      ],
+      "requirements": [
+        "FND-004",
+        "NFR-001",
+        "NFR-007"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-104",
+      "title": "Auth session boundary and security headers",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/auth",
+        "apps/web/src/server/security",
+        "apps/web/src/app/api/v1/auth",
+        "apps/web/next.config.ts",
+        "apps/web/tests/auth/session.test.ts"
+      ],
+      "acceptance": [
+        "Library bridge /api/v1/auth, secure HTTP-only same-site cookies, expiry/revoke, CSRF/origin and internal redirect checks, strict CSP; no custom crypto.",
+        "Session-derived owner guard rejects anonymous/unverified at every protected endpoint."
+      ],
+      "tests": [
+        "Session revoke/expiry, CSRF/origin, redirect/callback and unverified denial integration."
+      ],
+      "depends_on": [
+        "M1-CODE-103"
+      ],
+      "requirements": [
+        "FND-003",
+        "FND-004",
+        "NFR-001"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-105",
+      "title": "Signup verification and mail adapter",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/mail",
+        "apps/web/src/server/auth/email.ts",
+        "packages/i18n/src/en/mail.json",
+        "apps/web/tests/auth/verification.test.ts"
+      ],
+      "acceptance": [
+        "Local/CI captured mail, configured staging adapter; mail subject/body keys, no live CI mail/token logs.",
+        "Library signup/resend/verify handles duplicates, expiry/replay and concurrency; no learner access before verification."
+      ],
+      "tests": [
+        "Captured-mail full verification and outage/retry/replayed/expired token tests."
+      ],
+      "depends_on": [
+        "M1-CODE-104"
+      ],
+      "requirements": [
+        "FND-003",
+        "NFR-007"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-106",
+      "title": "Password recovery session invalidation",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/auth/password.ts",
+        "packages/i18n/src/en/mail.json",
+        "apps/web/tests/auth/password.test.ts"
+      ],
+      "acceptance": [
+        "Library reset lifecycle with bounded expiry/single-use and non-enumerating response.",
+        "Reset revokes relevant sessions and returns safe invalid/reused/expired errors."
+      ],
+      "tests": [
+        "Mail/reset/login, token replay/concurrency and old-session denial."
+      ],
+      "depends_on": [
+        "M1-CODE-105"
+      ],
+      "requirements": [
+        "FND-003",
+        "NFR-001"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-107",
+      "title": "Google GitHub and safe linking",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/auth/oauth.ts",
+        "apps/web/tests/auth/oauth.test.ts"
+      ],
+      "acceptance": [
+        "Library provider state/origin/callback checks; safe verified linking and collision policy, no email takeover.",
+        "Secrets server-only; cancel/outage safe retryable error."
+      ],
+      "tests": [
+        "Mock provider success/cancel/error/state/linking/concurrency; live success reserved for staging."
+      ],
+      "depends_on": [
+        "M1-CODE-106"
+      ],
+      "requirements": [
+        "FND-003",
+        "NFR-001"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-108",
+      "title": "Translations tokens and themes",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/i18n/src/index.ts",
+        "packages/i18n/src/en/common.json",
+        "packages/i18n/tests",
+        "packages/ui/src/tokens",
+        "packages/ui/src/theme",
+        "packages/ui/tests/theme.test.ts"
+      ],
+      "acceptance": [
+        "English keys and missing-key/pseudolocalization support for UI/a11y/mail/error text.",
+        "Four track tokens with noncolour identifiers; light/dark/system readable first paint and reduced motion."
+      ],
+      "tests": [
+        "Lookup/missing keys, theme contrast and preference first-paint tests."
+      ],
+      "depends_on": [
+        "M1-CODE-107"
+      ],
+      "requirements": [
+        "FND-002",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-109",
+      "title": "Accessible form and state primitives",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "packages/ui/src/components",
+        "packages/ui/tests/components.test.tsx",
+        "packages/ui/.storybook"
+      ],
+      "acceptance": [
+        "Labelled fields, keyboard, focus/error summary, status live regions and loading/empty/error/retry primitives.",
+        "WCAG2.2AA target spacing/focus, responsive and no hover dependence."
+      ],
+      "tests": [
+        "Storybook/component keyboard/a11y scans every primitive state."
+      ],
+      "depends_on": [
+        "M1-CODE-108"
+      ],
+      "requirements": [
+        "FND-002",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-110",
+      "title": "Signup verify and signin screens",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(auth)/signup",
+        "apps/web/src/app/(auth)/verify",
+        "apps/web/src/app/(auth)/signin",
+        "apps/web/src/components/auth",
+        "packages/i18n/src/en/auth.json",
+        "apps/web/tests/auth/email-ui.spec.ts"
+      ],
+      "acceptance": [
+        "Real API-backed signup/inbox/verify/signin/signout, translated validation and designed states.",
+        "Preserve safe input on failure, focus errors, unverified resend/safe return; clear secrets after success."
+      ],
+      "tests": [
+        "Captured-mail Playwright full journey, invalid/duplicate/rate/mail failures, keyboard/320px."
+      ],
+      "depends_on": [
+        "M1-CODE-109"
+      ],
+      "requirements": [
+        "FND-002",
+        "FND-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-111",
+      "title": "Reset provider and session-expired screens",
+      "parent_story": "US-02",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(auth)/forgot-password",
+        "apps/web/src/app/(auth)/reset-password",
+        "apps/web/src/app/(auth)/callback",
+        "packages/i18n/src/en/auth.json",
+        "apps/web/tests/auth/recovery-ui.spec.ts"
+      ],
+      "acceptance": [
+        "Translated request/reset/provider/cancel/expired/failure states backed by safe error mapping.",
+        "Reset-to-signin recovery keyboard accessible; no enumeration or unsafe return path."
+      ],
+      "tests": [
+        "Playwright reset expiry/replay, mock providers, screen-reader labels/focus/themes."
+      ],
+      "depends_on": [
+        "M1-CODE-110"
+      ],
+      "requirements": [
+        "FND-003",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-112",
+      "title": "Owner profile and onboarding APIs",
+      "parent_story": "US-03",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/api/v1/profile",
+        "apps/web/src/app/api/v1/onboarding",
+        "apps/web/tests/learner/profile.test.ts"
+      ],
+      "acceptance": [
+        "Session-owned validated enums/calendar date, explicit skipped/saved state, atomic audit/version increment.",
+        "No client user ID authorization; stale version conflict preserves persisted data."
+      ],
+      "tests": [
+        "Two-user denial, every enum/date, skip/save/reload/edit and concurrent conflict."
+      ],
+      "depends_on": [
+        "M1-CODE-111"
+      ],
+      "requirements": [
+        "FND-004",
+        "FND-005",
+        "NFR-007"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-113",
+      "title": "Skippable onboarding and profile screens",
+      "parent_story": "US-03",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(learner)/onboarding",
+        "apps/web/src/app/(learner)/profile",
+        "packages/i18n/src/en/profile.json",
+        "apps/web/tests/learner/onboarding.spec.ts"
+      ],
+      "acceptance": [
+        "Verified learner prompt once; five backgrounds, level/goal/optional date, skip/later edit.",
+        "Translated responsive loading/error/conflict recovery preserves nonsecret input."
+      ],
+      "tests": [
+        "Playwright all backgrounds/skip/edit/date/failure; measured normal path <60s SHOULD."
+      ],
+      "depends_on": [
+        "M1-CODE-112"
+      ],
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-008"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-114",
+      "title": "Truthful empty dashboard and navigation",
+      "parent_story": "US-03",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(learner)/layout.tsx",
+        "apps/web/src/app/(learner)/dashboard",
+        "apps/web/src/app/api/v1/dashboard",
+        "apps/web/src/app/page.tsx",
+        "packages/i18n/src/en/dashboard.json",
+        "apps/web/tests/learner/dashboard.spec.ts"
+      ],
+      "acceptance": [
+        "Distinct no-owned/no-completed/no-mastered/review/weakness/streak/readiness states, no invented score/content.",
+        "Clear profile action one step away; safe return, loading/error/retry; reserve M3 continuation slot without claiming active-lab resume."
+      ],
+      "tests": [
+        "API anonymous/unverified denial; browser empty/error/retry/focus/themes/viewports."
+      ],
+      "depends_on": [
+        "M1-CODE-113"
+      ],
+      "requirements": [
+        "FND-007",
+        "FND-008",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-115",
+      "title": "Safe events tracing and consent foundation",
+      "parent_story": "US-04",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/server/observability",
+        "apps/web/src/components/telemetry",
+        "docs/contracts/M1/events.md",
+        "apps/web/tests/observability"
+      ],
+      "acceptance": [
+        "Schema signup/verify/onboarding save/skip/drop-off/dashboard/error events with pseudonymous ID/time/version; no email/IP/secrets/raw bodies.",
+        "Redacted request/error correlation; optional product analytics disabled without consent, operational records separately minimized/retained."
+      ],
+      "tests": [
+        "Redaction/schema/sink tests, analytics opt-out emits nothing."
+      ],
+      "depends_on": [
+        "M1-CODE-114"
+      ],
+      "requirements": [
+        "NFR-003",
+        "NFR-004"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-116",
+      "title": "Recent-auth owner export",
+      "parent_story": "US-04",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/api/v1/privacy/export",
+        "apps/web/tests/privacy/export.test.ts"
+      ],
+      "acceptance": [
+        "Recent authentication and owner-only versioned M1 personal export; no tokens/password credentials.",
+        "Rate limited, no cache, minimal audit; stale-auth/anonymous/cross-user rejected."
+      ],
+      "tests": [
+        "Export schema, isolation, recent-auth and log redaction."
+      ],
+      "depends_on": [
+        "M1-CODE-115"
+      ],
+      "requirements": [
+        "NFR-003",
+        "NFR-007"
+      ],
+      "estimate_worker_minutes": 15,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-117",
+      "title": "Deletion and restore suppression",
+      "parent_story": "US-04",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/api/v1/privacy/delete",
+        "apps/web/src/server/privacy",
+        "apps/web/tests/privacy/delete.test.ts",
+        "docs/contracts/M1/privacy.md"
+      ],
+      "acceptance": [
+        "Recent-auth explicit confirmation, idempotent transactional personal provider/profile/token removal and all-session revocation.",
+        "Document audit retention/backup expiry/restricted deletion suppression replay before restored access; new migration requires schema-owner lease transfer."
+      ],
+      "tests": [
+        "Transaction rollback/idempotency, cross-user denial, old-session rejection and suppression replay."
+      ],
+      "depends_on": [
+        "M1-CODE-116"
+      ],
+      "requirements": [
+        "NFR-003",
+        "NFR-005"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-CODE-118",
+      "title": "Privacy settings and account controls",
+      "parent_story": "US-04",
+      "role": "coding",
+      "kind": "application",
+      "allowed_paths": [
+        "apps/web/src/app/(learner)/settings",
+        "packages/i18n/src/en/privacy.json",
+        "apps/web/tests/privacy/privacy.spec.ts"
+      ],
+      "acceptance": [
+        "Translated export/delete/re-auth/confirm/success/error flow with essential-only storage default and clear retention/backups copy.",
+        "Delete clears session/deep-link access; accessible confirmation, consent opt-in/out, no training or coach data pipeline."
+      ],
+      "tests": [
+        "Playwright export/delete/retry/recent-auth, keyboard/focus and consent sink."
+      ],
+      "depends_on": [
+        "M1-CODE-117"
+      ],
+      "requirements": [
+        "NFR-003",
+        "NFR-002"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-111",
+      "title": "Staging infrastructure definitions",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "infra/staging/services",
+        "infra/staging/config.example.json",
+        "docs/operations/M1/staging.md"
+      ],
+      "acceptance": [
+        "Operator-selected host/region/registry/Postgres/Redis/secrets/mail/OAuth/monitoring templates use names only; no invented credentials or success.",
+        "IaC isolates learner/controller, HTTPS, migration/runtime roles, health/alerts and external spending controls; external prerequisites explicit."
+      ],
+      "tests": [
+        "IaC validation/secrets scan/network-role deny tests; absent host configuration blocks actual deployment."
+      ],
+      "depends_on": [
+        "M1-CODE-118"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-112",
+      "title": "Selected-host staging adapter transport",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "infra/staging/adapter.py",
+        "infra/staging/test_adapter.py",
+        "docs/operations/M1/deploy.md"
+      ],
+      "acceptance": [
+        "Implement selected target deploy/inspect transport, immutable image and migration receipt, no production.",
+        "Staging-configured policy toggle is separately founder-accepted operator patch followed by authenticated amendment/renewed approval; this task cannot edit policy."
+      ],
+      "tests": [
+        "Transport fault/idempotency/retry/rollback fixtures; actual target evidence only after operator config."
+      ],
+      "depends_on": [
+        "M1-OPS-111"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-113",
+      "title": "Backup restore deletion replay rollback scripts",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "infra/staging/recovery",
+        "docs/operations/M1/recovery.md"
+      ],
+      "acceptance": [
+        "Daily encrypted backup/retention and isolated restore validation incl account data and deletion suppression.",
+        "Compatible binary rollback, incompatible schema stops writes and restores known backup rather than blind down migration; monitor 99.9% target without historic claim."
+      ],
+      "tests": [
+        "Recovery fixture/fault tests and runbook commit/image/migration/backup identity."
+      ],
+      "depends_on": [
+        "M1-OPS-112"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-114",
+      "title": "Actual staging deployment receipt and remote smoke",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "docs/releases/R-1/evidence/operations/deploy.json",
+        "docs/releases/R-1/evidence/operations/smoke.json"
+      ],
+      "acceptance": [
+        "Trusted controller/operator deploys integrated candidate; worker records redacted commit/image/migration/environment/URL/run/time receipt, no model deployment privilege.",
+        "Remote health/network/secrets/mail/provider callback and observability checks; unavailable external setup is BLOCKED, never mock success."
+      ],
+      "tests": [
+        "Actual staged artifact inspection and remote smoke at same digest."
+      ],
+      "depends_on": [
+        "M1-OPS-113"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 12,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    },
+    {
+      "id": "M1-OPS-115",
+      "title": "Actual recovery alert and performance evidence",
+      "parent_story": "US-01",
+      "role": "devops",
+      "kind": "infrastructure",
+      "allowed_paths": [
+        "docs/releases/R-1/evidence/operations/recovery.json",
+        "docs/releases/R-1/evidence/operations/performance.json"
+      ],
+      "acceptance": [
+        "Actual isolated staging fresh/seeded migrations, backup restore/deletion replay/compatible rollback; real logs/digests, not configuration claims.",
+        "Record phone/4G meaningful-content paint <2.5s, fault/alert/health recovery; physical-phone independent review in QA stage, visualizer deferred M2."
+      ],
+      "tests": [
+        "Actual staging operational drill/traces/backup and migration IDs; unavailable evidence blocks."
+      ],
+      "depends_on": [
+        "M1-OPS-114"
+      ],
+      "requirements": [
+        "FND-001",
+        "GOV-002",
+        "GOV-003"
+      ],
+      "estimate_worker_minutes": 18,
+      "evidence": [
+        "Exact base/submitted revision and spec/plan/policy hashes",
+        "Actual commands/outcomes and artifact digests, environment classification and limitations",
+        "Independent reviewer execution on same revision; changed revisions invalidate affected evidence; usage"
+      ]
+    }
+  ],
+  "ui_ux": {
+    "artifact": "docs/releases/R-1/UX.md",
+    "flows": [
+      "Signup → verify → save/skip onboarding → empty dashboard",
+      "Signin/password or Google/GitHub → safe internal return",
+      "Forgot → mail → reset → signin",
+      "Profile edit and privacy export/delete"
+    ],
+    "states": "UX.md binds screen states, focus, translated errors/mail/a11y and recovery.",
+    "responsive": "320/768/1280px; WCAG2.2AA light/dark/system/reduced-motion; physical phone+desktop staging."
+  },
+  "architecture": {
+    "artifact": "docs/releases/R-1/ARCHITECTURE.md",
+    "decisions": [
+      "Accepted TypeScript/pnpm/Next.js/Postgres/Drizzle/Zod/Better Auth/Redis; pin/verify during implementation",
+      "Flat child tasks imported as ordinary stories; parents are metadata",
+      "QA and final acceptance outside implementation ledger gate",
+      "Policy-only authenticated amendment preserves work; broader contract amendments rejected pending support"
+    ],
+    "diagrams": [
+      "ARCHITECTURE.md#runtime",
+      "ARCHITECTURE.md#delivery"
+    ]
+  },
+  "operations": {
+    "artifact": "docs/releases/R-1/OPERATIONS.md",
+    "prerequisites": [
+      "Exact signed plan approval",
+      "Independent protected-patch review and separate founder acceptance",
+      "Amendment before policy change",
+      "Trusted real app CI and staging adapter",
+      "Operator host/registry/region/secrets/DB/Redis/mail/OAuth/monitoring",
+      "External budget/spending controls and phone access"
+    ],
+    "failure_policy": "Absent/failed/stale checks/adapters/evidence block; infrastructure-only/local/model checks never substitute."
+  },
+  "acceptance_tests": [
+    {
+      "id": "AT-01",
+      "requirements": [
+        "FND-001"
+      ],
+      "procedure": "Clean frozen install and all six hosted app jobs nonempty; image exclusions",
+      "required_evidence": "Hosted CI + image digest/inspection",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-02",
+      "requirements": [
+        "FND-003",
+        "FND-004",
+        "NFR-007"
+      ],
+      "procedure": "Signup/verify/resend/signin/out/reset, expired/reused tokens and sessions, duplicates/concurrency",
+      "required_evidence": "Unit/integration/browser + actual staging mail",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-03",
+      "requirements": [
+        "FND-003"
+      ],
+      "procedure": "Google/GitHub success/cancel/state/linking/conflict",
+      "required_evidence": "Mocks separate from actual staging provider success",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-04",
+      "requirements": [
+        "FND-005",
+        "FND-006",
+        "FND-008"
+      ],
+      "procedure": "Every profile enum/date, skip/save/edit/reload/conflict/cross-user, <60s normal onboarding",
+      "required_evidence": "Unit/integration/E2E + staging usability timing",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-05",
+      "requirements": [
+        "FND-007"
+      ],
+      "procedure": "Separate empty ownership/completion/mastery/review/weakness/streak/readiness, clear next action/failure retry",
+      "required_evidence": "Component/E2E + desktop/phone staging",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-06",
+      "requirements": [
+        "FND-002",
+        "NFR-002"
+      ],
+      "procedure": "WCAG2.2AA keyboard/screen-reader/focus/contrast/themes/reduced motion/translation/pseudolocalization/320-768-1280",
+      "required_evidence": "Automated + manual desktop/physical-phone staging; emulation labelled",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-07",
+      "requirements": [
+        "NFR-001",
+        "NFR-007"
+      ],
+      "procedure": "ASVS L2 map, CSRF/cookies/CSP/auth/Zod/limits/bot/Redis outage/DB roles/secrets/dependency scan",
+      "required_evidence": "Adversarial integration/staging",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-08",
+      "requirements": [
+        "NFR-003"
+      ],
+      "procedure": "Recent-auth export/delete/session revoke, consent and essential storage, restore suppression",
+      "required_evidence": "Integration/E2E + actual staging privacy/recovery",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-09",
+      "requirements": [
+        "NFR-004"
+      ],
+      "procedure": "Documented safe events/error tracing, redaction/consent",
+      "required_evidence": "Redacted staging sink samples + schema tests",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-10",
+      "requirements": [
+        "NFR-005",
+        "FND-004"
+      ],
+      "procedure": "Fresh/seeded migrations, daily encrypted backup/isolated actual restore/rollback/deletion replay",
+      "required_evidence": "Actual staging backup/image/migration logs",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-11",
+      "requirements": [
+        "NFR-002"
+      ],
+      "procedure": "Meaningful-content paint <2.5s midrange phone/4G; availability target monitoring",
+      "required_evidence": "Recorded staging traces/profile; no historical SLO claim",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "AT-12",
+      "requirements": [
+        "GOV-001",
+        "GOV-002",
+        "GOV-003",
+        "GOV-004"
+      ],
+      "procedure": "Exact approved hashes/reviews/full §15, no M2/production",
+      "required_evidence": "Acceptance matrix only after passed QA",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CT-01",
+      "requirements": [
+        "GOV-003"
+      ],
+      "procedure": "Integration → automatic exact QA → failed bug → independent reviewed fix → fresh QA → acceptance eligibility",
+      "required_evidence": "Executable lifecycle regression + proposed scheduler integration",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CT-02",
+      "requirements": [
+        "GOV-002"
+      ],
+      "procedure": "Policy blocks dispatch; amendment preserves work; new submitted hash approves, old fails; renewed approval resumes",
+      "required_evidence": "Proposed amendment/CLI regression then trusted CI",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CT-03",
+      "requirements": [
+        "FND-001",
+        "GOV-003"
+      ],
+      "procedure": "Missing/failed/stale/forged application checks block, current trusted success permits next gate, bot dispatch",
+      "required_evidence": "Proposed fake API + real ledger integration then actual trusted CI",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CT-04",
+      "requirements": [
+        "GOV-003",
+        "NFR-005"
+      ],
+      "procedure": "Deployed artifact receipt bound to actual candidate/image/env; local/stale/wrong evidence rejects",
+      "required_evidence": "Proposed adapter tests + actual staged artifact inspection",
+      "status": "NOT_RUN"
+    }
+  ],
+  "delivery_tasks": {
+    "artifact": "docs/releases/R-1/DELIVERY.md",
+    "model": "Flat user_stories are executable child tasks. product_stories are non-dispatched outcome metadata. No nested scheduling.",
+    "dependency_graph": {
+      "M1-OPS-101": [],
+      "M1-OPS-102": [
+        "M1-OPS-101"
+      ],
+      "M1-OPS-103": [
+        "M1-OPS-102"
+      ],
+      "M1-OPS-104": [
+        "M1-OPS-103"
+      ],
+      "M1-OPS-105": [
+        "M1-OPS-104"
+      ],
+      "M1-OPS-106": [
+        "M1-OPS-105"
+      ],
+      "M1-OPS-107": [
+        "M1-OPS-106"
+      ],
+      "M1-OPS-108": [
+        "M1-OPS-107"
+      ],
+      "M1-OPS-109": [
+        "M1-OPS-108"
+      ],
+      "M1-OPS-110": [
+        "M1-OPS-109"
+      ],
+      "M1-LEAD-101": [
+        "M1-OPS-110"
+      ],
+      "M1-UX-101": [
+        "M1-LEAD-101"
+      ],
+      "M1-UX-102": [
+        "M1-UX-101"
+      ],
+      "M1-CODE-101": [
+        "M1-UX-102"
+      ],
+      "M1-CODE-102": [
+        "M1-CODE-101"
+      ],
+      "M1-CODE-103": [
+        "M1-CODE-102"
+      ],
+      "M1-CODE-104": [
+        "M1-CODE-103"
+      ],
+      "M1-CODE-105": [
+        "M1-CODE-104"
+      ],
+      "M1-CODE-106": [
+        "M1-CODE-105"
+      ],
+      "M1-CODE-107": [
+        "M1-CODE-106"
+      ],
+      "M1-CODE-108": [
+        "M1-CODE-107"
+      ],
+      "M1-CODE-109": [
+        "M1-CODE-108"
+      ],
+      "M1-CODE-110": [
+        "M1-CODE-109"
+      ],
+      "M1-CODE-111": [
+        "M1-CODE-110"
+      ],
+      "M1-CODE-112": [
+        "M1-CODE-111"
+      ],
+      "M1-CODE-113": [
+        "M1-CODE-112"
+      ],
+      "M1-CODE-114": [
+        "M1-CODE-113"
+      ],
+      "M1-CODE-115": [
+        "M1-CODE-114"
+      ],
+      "M1-CODE-116": [
+        "M1-CODE-115"
+      ],
+      "M1-CODE-117": [
+        "M1-CODE-116"
+      ],
+      "M1-CODE-118": [
+        "M1-CODE-117"
+      ],
+      "M1-OPS-111": [
+        "M1-CODE-118"
+      ],
+      "M1-OPS-112": [
+        "M1-OPS-111"
+      ],
+      "M1-OPS-113": [
+        "M1-OPS-112"
+      ],
+      "M1-OPS-114": [
+        "M1-OPS-113"
+      ],
+      "M1-OPS-115": [
+        "M1-OPS-114"
+      ]
+    },
+    "release_stages": [
+      {
+        "id": "M1-QA-STAGE",
+        "role": "qa",
+        "ledger_item": false,
+        "entry": "Every implementation story/bug integrated, exact current candidate deployed and validated",
+        "action": "start_qa → independent staging-qa; failures create parent-scoped bugs; reviewed fixes require fresh candidate QA",
+        "exit": "Independent PASS plus matching real validation/full §15 → complete_qa"
+      },
+      {
+        "id": "M1-ACCEPTANCE-STAGE",
+        "role": "lead",
+        "ledger_item": false,
+        "entry": "QA_PASSED at exact integration SHA with all MUST evidence",
+        "action": "Controller persists independently reviewed acceptance matrix/changelog as stage evidence without mutating tested candidate",
+        "exit": "M1 accepted report and stop; no automatic M2/production"
+      }
+    ],
+    "dispatch_limits": {
+      "max_total_agents": 4,
+      "max_workers": 3,
+      "max_task_minutes": 20,
+      "max_model_tokens": 100000,
+      "max_cost_allocation_usd": 2,
+      "max_attempts": 2,
+      "max_review_rounds": 2,
+      "max_discussion_messages_per_round": 4
+    },
+    "estimates": {
+      "task_count": 36,
+      "first_pass_worker_minutes": 597,
+      "first_pass_allocation_usd": 72,
+      "two_attempt_allocation_usd": 144,
+      "exclusions": "Independent review/QA/operator wait/hosting extra. Allocation is not hard provider spend cap. Each task one bounded attempt <=20m, max two; no unbounded sessions or reset by renaming."
+    }
+  },
+  "risks": [
+    {
+      "risk": "Runtime prerequisites unimplemented",
+      "mitigation": "Explicit infrastructure tasks and regression contracts; separately commission after approval, no controller edits here."
+    },
+    {
+      "risk": "Policy drift mid-release",
+      "mitigation": "Amendment first; halt, resubmit canonical hash preserving identities/history and renew approval."
+    },
+    {
+      "risk": "Replacement task graph on started release",
+      "mitigation": "Controller must confirm no attempts before preimplementation revise-plan; otherwise requires separately reviewed general amendment support, narrow policy-only amendment must reject."
+    },
+    {
+      "risk": "Slice estimate overrun",
+      "mitigation": "Checkpoint and stop within 20m; after two attempts return evidence for material amendment, never extra sessions/reset attempts."
+    },
+    {
+      "risk": "Host/providers/budgets absent",
+      "mitigation": "Local fixtures proceed, actual staging remains blocked pending operator setup."
+    },
+    {
+      "risk": "Stage report alters candidate",
+      "mitigation": "Persist controller stage evidence outside candidate source; any application change requires fresh QA."
+    },
+    {
+      "risk": "Prototype/private corpus shipping",
+      "mitigation": "Preserve prototype, explicit learner image allowlist and artifact inspection."
+    }
+  ],
+  "open_decisions": {
+    "product": "Five §14 OPEN items remain open; provisional branding and synthetic data, no commerce/coach mean none blocks M1.",
+    "external": "Operator chooses host/region/residency/retention/registry/DB/Redis/mail/OAuth/secret store/monitoring/spending controls before affected tasks."
+  },
+  "supporting_documents": {
+    "docs/releases/R-1/ARCHITECTURE.md": "077b275354ddddf7b7c885f90bc8328ad62bbdc5c0f9fba98faf3592195b05bf",
+    "docs/releases/R-1/DELIVERY.md": "28e76d258a6f87274ec9f67a2811eae9b150896d68907482503b7a14004cc859",
+    "docs/releases/R-1/OPERATIONS.md": "d40d047c96a588f6c31b01f95ccbaa1900a8f004c17814fba5e66d9d6bddbd8b",
+    "docs/releases/R-1/UX.md": "824788b86567c6b6013d2e592311941b66af3cc9a53e5e2ec1475e223d2c7822",
+    "docs/releases/R-1/proposed_tests/support.py": "64e46e8c910d4090bad8d0cfe408ce3b1f68a10f24d0d1b5a7e3c40af87c6ddd",
+    "docs/releases/R-1/proposed_tests/test_amendment.py": "3568293a42345c95a618410130679eb4748b9126dfb9e5870d86c40296563b40",
+    "docs/releases/R-1/proposed_tests/test_amendment_cli.py": "b49c3ef8d64c68b1610083557f23419a392ccb4a838884f7fc22f9de78640b30",
+    "docs/releases/R-1/proposed_tests/test_provenance.py": "c905e5de09ea4fe8b85b5e1b8a9efaaa337dbf44da051e2764bb1529cd5d2205",
+    "docs/releases/R-1/proposed_tests/test_release_lifecycle.py": "baba37b4ffeecc856f7a1c543781f510021d26ac4043b08ccf64a6cb836a499a",
+    "docs/releases/R-1/validate_plan.py": "c82b443358a64228aba84f5bf8ac4e97a6d862992c6045ada3910da4bcff78f6"
+  }
+}
