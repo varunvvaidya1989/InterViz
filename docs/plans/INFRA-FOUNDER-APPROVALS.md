@@ -85,3 +85,17 @@ fixtures run in separate read-only `.github/workflows/founder-dashboard-ci.yml`.
 Existing required infrastructure provenance remains unchanged. Final verification
 includes all automation/dashboard unit tests and synthetic browser approval tests;
 independent QA must review the resulting exact consolidated revision.
+
+The subsequent OPS-102 correction `aff7c7c4d710554e2c487f41990335ed4425b910`
+is also merged: ordinary plan import cannot replace a started release's plan,
+and identical import replay preserves the original metadata and live leases.
+
+Consolidated local evidence: 113 automation tests and 13 dashboard/transport tests
+passed; infrastructure contract validation, JavaScript syntax and whitespace
+checks passed. Synthetic Chrome approval browser checks passed. The existing
+dashboard browser checks also passed against this worktree on loopback port 8012
+using read-only live GitHub data (36 tasks, no warnings); approval dispatch stayed
+disabled because the new workflow was absent from trusted main. Browser output
+screenshots are ignored artifacts, not staged application or live approval proof.
+No remote writes, merges, production setting changes or deployments were performed.
+Final independent QA and hosted exact-revision CI remain outstanding at submission.

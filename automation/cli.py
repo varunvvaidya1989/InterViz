@@ -124,6 +124,15 @@ def find_item(control,reference):
 def adopt_plan(p,control,path,actor):
     plan,plan_hash=plan_document(path,p,ROOT);release_id=plan["release_id"]
     existing={r["id"] for r in control.snapshot()["releases"]}
+    if release_id in existing:
+        snapshot=control.snapshot(release_id)
+        if any(item['attempts'] for item in snapshot['items']):
+            if snapshot['releases'][0].get('plan_hash')!=plan_hash:
+                raise ValueError('Started releases require amend-plan; ordinary plan import cannot replace their plan.')
+            unchanged_plan_contracts(p,control,plan)
+            # Identical import replay is a read: preserve live leases and the
+            # original canonical metadata, including published PR provenance.
+            return snapshot['releases'][0]
     if release_id not in existing:control.create_release(release_id,plan.get("title",release_id),actor,{"plan_path":str(Path(path).resolve().relative_to(ROOT))})
     for story in plan["user_stories"]:
         validate_assignment(story["allowed_paths"],p,infrastructure=story.get("kind")=="infrastructure")
@@ -174,16 +183,8 @@ def amendment_document(p,path):
     return plan,plan_hash
 
 
-def amend_plan(p,control,path,expected_old_hash,authenticated_actor):
-    """Ledger-first canonical publication; the same authenticated command recovers a crash.
-
-    The immutable plan_amended event makes the domain transition idempotent.
-    Until the following manifest write succeeds, require_current_plan rejects
-    every dispatch/acceptance path. The unconsumed authenticated command is then
-    replayed by scheduled reconciliation without resetting any work receipts.
-    """
-    control._founder(authenticated_actor)
-    plan,new_hash=amendment_document(p,path);release_id=plan['release_id']
+def unchanged_plan_contracts(p,control,plan):
+    release_id=plan['release_id']
     items={i['id']:i for i in control.snapshot(release_id)['items'] if i['kind']=='story'}
     stories={s['id']:s for s in plan['user_stories']}
     if items.keys()!=stories.keys():raise ValueError('Amendment must preserve every original story contract and dependency.')
@@ -198,6 +199,19 @@ def amend_plan(p,control,path,expected_old_hash,authenticated_actor):
                 or sorted(set(story.get('depends_on',[])))!=item['depends_on']):
             raise ValueError('Amendment cannot change original story contracts or dependencies.')
         validate_assignment(story['allowed_paths'],p,infrastructure=story.get('kind')=='infrastructure')
+
+
+def amend_plan(p,control,path,expected_old_hash,authenticated_actor):
+    """Ledger-first canonical publication; the same authenticated command recovers a crash.
+
+    The immutable plan_amended event makes the domain transition idempotent.
+    Until the following manifest write succeeds, require_current_plan rejects
+    every dispatch/acceptance path. The unconsumed authenticated command is then
+    replayed by scheduled reconciliation without resetting any work receipts.
+    """
+    control._founder(authenticated_actor)
+    plan,new_hash=amendment_document(p,path);release_id=plan['release_id']
+    unchanged_plan_contracts(p,control,plan)
     result=control.amend_plan(release_id,expected_old_hash,new_hash,authenticated_actor)
     kv('plan:'+release_id,{'document':plan,'hash':new_hash,
                          'path':str(Path(path).resolve().relative_to(ROOT.resolve()))},True)

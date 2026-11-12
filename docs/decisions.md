@@ -106,3 +106,14 @@ The restored M1-OPS-101 review proved that all-files read-only tools prevent tem
 ## ADR-022 - Preserve positive PASS review evidence
 
 The shared QA/review schema allows PASS, but the review publisher expected only APPROVE. Two completed corrected-sandbox reviews independently passed the exact candidate's 48 tests and found no defects, yet were mislabeled as environment failures. Normalize positive PASS to canonical APPROVE without altering its report. Recover an already completed result only from matching signed event plus authenticated trusted run/artifact and exact reviewer/head/approved-plan/contract proof, excluding all later code/review transitions. Retain every old receipt, verdict and attempt, request fresh CI, and record provenance for the canonical interpretation. This is a label correction of actual successful evidence, not a failed-check waiver or another paid review.
+
+## ADR-023 - Consolidate founder approvals with current-plan recovery barriers
+
+Keep the dashboard approval buttons on the same controller revision as bounded
+lead adoption and authenticated started-plan amendments. Candidate preparation and
+release approval must pass the current manifest, ledger and approval hash barrier;
+the read-only dashboard suppresses release cards when those versions disagree.
+Retain the published infrastructure CI workflow unchanged so the PR cannot redefine
+its own certifying workflow. Run dashboard transport fixtures in a separate
+read-only workflow. This integration does not approve a plan, reset task attempts,
+enable production or replace independent exact-revision verification.
