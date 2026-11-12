@@ -97,6 +97,8 @@ The ledger compares the previous submitted hash, rejects active leases and histo
 
 Canonical manifest publication follows the audited ledger transaction. If publication fails, the authenticated command remains unconsumed and scheduled replay completes the same amendment with one audit event. Worker preflight, result publication through reconciliation, task scheduling, merge reconciliation, QA scheduling and candidate/publication entry points require matching canonical, submitted and approved current hashes. A partial publication therefore blocks work until recovery succeeds. If committed inputs change before replay, it fails closed and requires the lead to recover the exact intended document; it never guesses a replacement approval.
 
+Reconciliation replays authenticated founder commands before inspecting retained worker handoffs. A stale handoff therefore cannot prevent recovery of interrupted canonical publication. Publication still waits for renewed approval and rejects any handoff whose own plan hash differs from the current approved hash, including after renewal. Retained results never grant approval or erase the original failed review.
+
 ## Exhausted workers and lead corrections
 
 Non-SUBMITTED implementation reports are retained as bounded, credential-redacted `worker-failure.json` artifacts before rejection. Provider exceptions retain a generic classification, never raw process output. A matching failed worker lease is released and audited without refunding the attempt. Historic failures whose artifacts were not retained have unknown reasons.

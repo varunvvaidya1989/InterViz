@@ -99,6 +99,44 @@ class AmendmentCLI(unittest.TestCase):
         self.assertEqual(self.store['queue:devops:R1:story:S2'],{'revision':'c'*40})
         self.assertTrue(self.c.verify_audit()['valid'])
 
+    def retained_result(self,plan_hash):
+        out=self.root/'out';out.mkdir(exist_ok=True)
+        (out/'worker-result.json').write_text(json.dumps({'role':'review','kind':'story',
+            'reference':'R1:story:S1','revision':H,'plan_hash':plan_hash,
+            'report':{'verdict':'APPROVE'},'worker_id':'reviewer'}),encoding='utf-8')
+
+    def test_interrupted_publication_replays_commands_before_rejecting_retained_handoff(self):
+        original=cli.kv.side_effect
+        def interrupted(key,value=None,write=False):
+            if write and key=='plan:R1':raise RuntimeError('metadata interruption')
+            return original(key,value,write)
+        with patch.object(cli,'kv',side_effect=interrupted):
+            with self.assertRaises(RuntimeError):self.amend()
+        self.retained_result(P)
+        client=self.api();comment={'id':30,'body':'/sdlc amend-plan R1 plan.json '+P,'user':{'login':'founder'}}
+        client.pages.side_effect=lambda url,**kwargs:[comment] if url.endswith('/issues/comments') else []
+        with self.assertRaisesRegex(ValueError,'approval.*stale'):self.reconcile(client)
+        self.assertNotEqual(self.store['plan:R1']['hash'],P)
+        self.assertTrue(self.store['comment:30']['processed'])
+        self.assertEqual(len([e for e in self.c.events('R1') if e['type']=='plan_amended']),1)
+        self.assertEqual(self.before,self.c.snapshot('R1')['items'])
+        client.request.assert_not_called();client.dispatch.assert_not_called()
+
+    def test_renewed_approval_still_cannot_publish_an_old_plan_handoff(self):
+        self.amend();actual=self.store['plan:R1']['hash'];self.c.approve_plan('R1',actual,'founder')
+        self.retained_result(P);client=self.api();before=self.c.snapshot();events=self.c.events()
+        with self.assertRaisesRegex(ValueError,'handoff belongs to a stale plan'):self.reconcile(client)
+        self.assertEqual(before,self.c.snapshot());self.assertEqual(events,self.c.events())
+        client.request.assert_not_called();client.dispatch.assert_not_called()
+
+    def test_matching_current_handoff_reaches_publisher_after_command_replay(self):
+        self.p['execution_mode']='dry-run'
+        self.amend();actual=self.store['plan:R1']['hash'];self.c.approve_plan('R1',actual,'founder')
+        self.retained_result(actual);client=self.api()
+        with patch.object(cli,'publish_result',return_value={'fixture':'published'}) as publish:
+            self.reconcile(client)
+        publish.assert_called_once()
+
     def test_contract_scope_title_dependency_graph_changes_and_nonfounder_have_no_effect(self):
         for mutation in ('scope','acceptance','title','dependency','deleted','added','actor'):
             with self.subTest(mutation=mutation):

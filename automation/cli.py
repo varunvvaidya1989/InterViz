@@ -650,22 +650,7 @@ def publish_result(p,client,control):
     kv(marker,{"published":True},True);kv("queue:"+role+":"+result["reference"],None,True);return {"processed_worker":role,"reference":result["reference"]}
 
 
-def reconcile(p,args):
-    client=github(p);principal(p,client);control=ledger(p)
-    # Gate the authenticated entry point before the low-level publisher can
-    # consume any worker handoff, including review, integration and QA results.
-    handoff=OUT/'worker-result.json'
-    if handoff.exists():
-        result=json.loads(handoff.read_text(encoding='utf-8'))
-        if not (result.get('role')=='lead' and result.get('kind')=='plan'):
-            require_current_plan(p,control,result['reference'].split(':')[0])
-    processed=publish_result(p,client,control)
-    existing={r["id"] for r in control.snapshot()["releases"]}
-    for issue in client.pages(client.root+"/issues?state=open&labels=sdlc%3Aplan"):
-        release_id="R-"+str(issue["number"])
-        if "pull_request" in issue or issue.get("user",{}).get("login") not in p["founders"]["usernames"] or release_id in existing:continue
-        control.create_release(release_id,issue["title"],issue["user"]["login"],{"issue":issue["number"],"direction":issue.get("body","")[:12000]})
-        existing.add(release_id)
+def replay_founder_commands(p,client,control):
     # Scheduled rescanning means GitHub concurrency coalescing loses no approval.
     for comment in client.pages(client.root+"/issues/comments"):
         if comment.get("user",{}).get("login") not in p["founders"]["usernames"] or not comment.get("body","").startswith("/sdlc "):continue
@@ -692,6 +677,27 @@ def reconcile(p,args):
             else:continue
             kv("comment:"+str(comment["id"]),{"processed":True,"actor":actor},True)
         except (ValueError,ControlError,TypeError):continue
+
+
+def reconcile(p,args):
+    client=github(p);principal(p,client);control=ledger(p)
+    replay_founder_commands(p,client,control)
+    # Gate the authenticated entry point before the low-level publisher can
+    # consume any worker handoff, including review, integration and QA results.
+    handoff=OUT/'worker-result.json'
+    if handoff.exists():
+        result=json.loads(handoff.read_text(encoding='utf-8'))
+        if not (result.get('role')=='lead' and result.get('kind')=='plan'):
+            _,actual=require_current_plan(p,control,result['reference'].split(':')[0])
+            if result.get('plan_hash')!=actual:
+                raise ValueError('Worker handoff belongs to a stale plan; publication remains blocked.')
+    processed=publish_result(p,client,control)
+    existing={r["id"] for r in control.snapshot()["releases"]}
+    for issue in client.pages(client.root+"/issues?state=open&labels=sdlc%3Aplan"):
+        release_id="R-"+str(issue["number"])
+        if "pull_request" in issue or issue.get("user",{}).get("login") not in p["founders"]["usernames"] or release_id in existing:continue
+        control.create_release(release_id,issue["title"],issue["user"]["login"],{"issue":issue["number"],"direction":issue.get("body","")[:12000]})
+        existing.add(release_id)
     if p["execution_mode"]!="live" or not p["providers"]["live_execution_enabled"]:return {"mode":"dry-run","worker_result":processed,"queued":[],"note":"No paid model calls or merges are enabled."}
     require_live(p);scheduled=[]
     reconcile_pass_aliases(p,client,control)
