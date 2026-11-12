@@ -354,8 +354,17 @@ def record_ci_run(p,client,control,run):
     if p['checks']['application_configured']:
         # The notification is only a wake-up hint, never evidence. Re-fetch
         # every required workflow and its latest attempt from trusted API facts.
-        for item in control.snapshot()['items']:
-            if item.get('head_sha') and item.get('pr_url') and item['status']=='SUBMITTED':
+        snapshot=control.snapshot()
+        released={release['id'] for release in snapshot['releases'] if release['state']=='RELEASED'}
+        approved=set()
+        for release in snapshot['releases']:
+            if release['id'] in released:continue
+            try:require_current_plan(p,control,release['id'])
+            except (ValueError,ControlError):continue
+            approved.add(release['id'])
+        for item in snapshot['items']:
+            if (item.get('head_sha') and item.get('pr_url') and item['status'] in {'SUBMITTED','INTEGRATED','DONE'}
+                    and item['release_id'] in approved):
                 pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
                 pr_files(client,pr,item,p)
                 ci.reconcile_item(p,client,control,item,lambda head:kv('ci-queued:'+head))
