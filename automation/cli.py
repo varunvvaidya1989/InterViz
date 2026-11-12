@@ -357,6 +357,56 @@ def pr_files(client,pr,item,p):
     return files,protected_changes(paths,p)
 
 
+def queue_pr_ci(p, client, pr, head):
+    """Recover missed bot PR events, independently for each trusted workflow.
+
+    A failed dispatch leaves a pending receipt and is retried on reconciliation.
+    GitHub dispatch has no idempotency key: a crash after API acceptance can
+    produce a duplicate run; CI aggregation treats every latest execution safely.
+    """
+    branch = client.info()['default_branch']
+    if (not re.fullmatch(r'[a-f0-9]{40}', head)
+            or type(pr.get('number')) is not int or pr['number'] <= 0
+            or pr['head']['sha'] != head
+            or pr['head']['repo']['full_name'] != client.repository
+            or pr['base']['repo']['full_name'] != client.repository
+            or pr['base']['ref'] != branch):
+        raise ValueError('CI dispatch requires the current same-repository PR head.')
+    receipt_key = 'ci-queued:' + head
+    receipt = kv(receipt_key) or {}
+    if receipt and receipt.get('pr') != pr['number']:
+        raise ValueError('CI queue receipt belongs to a different PR.')
+    receipt = dict(receipt, pr=pr['number'], time=receipt.get('time', time.time()),
+                   workflows=dict(receipt.get('workflows', {})))
+    kv(receipt_key, receipt, True)
+    # Queue application CI even before policy registration. It must fail closed
+    # until the separately assigned workspace/nonempty scripts are installed.
+    for workflow in ('infrastructure-ci.yml', 'application-ci.yml'):
+        if receipt['workflows'].get(workflow) == 'dispatched':
+            continue
+        # Re-read identity immediately before every external side effect.
+        current = client.pr(pr['number'])
+        if ci.pr_identity(current) != ci.pr_identity(pr):
+            raise ValueError('PR changed before CI dispatch.')
+        if receipt['workflows'].get(workflow) == 'pending':
+            # Recover API acceptance followed by a controller crash before the
+            # acknowledgement was durably saved. A delayed API listing may
+            # still cause a duplicate; dispatch has no exactly-once API.
+            runs = client.pages(client.root + '/actions/workflows/' + workflow + '/runs', key='workflow_runs')
+            if any(run.get('head_branch') == branch and
+                   run.get('repository', {}).get('full_name') == client.repository and
+                   ci.target_pr(run, lambda _: receipt) == (head, [pr['number']]) for run in runs):
+                receipt['workflows'][workflow] = 'dispatched'
+                kv(receipt_key, receipt, True)
+                continue
+        receipt['workflows'][workflow] = 'pending'
+        kv(receipt_key, receipt, True)
+        client.dispatch(workflow, {'pull-request': str(pr['number']), 'revision': head})
+        receipt['workflows'][workflow] = 'dispatched'
+        kv(receipt_key, receipt, True)
+    return receipt
+
+
 def record_ci_run(p,client,control,run):
     if p['checks']['application_configured']:
         # The notification is only a wake-up hint, never evidence. Re-fetch
@@ -889,9 +939,7 @@ def reconcile(p,args):
                 if len(diff)>180000:raise ValueError("Review diff exceeds the complete-review limit; split the work item.")
                 kv(key,{"revision":item["head_sha"],"time":time.time(),"diff":diff,'review_contract':REVIEW_CONTRACT},True)
                 client.dispatch("agent-control.yml",{"action":"worker","role":"review","task-id":f"{release['id']}:{item['kind']}:{item['id']}","revision":item["head_sha"]});scheduled.append(key)
-            if not kv("ci-queued:"+item["head_sha"]):
-                kv("ci-queued:"+item["head_sha"],{"pr":pr["number"],"time":time.time()},True)
-                client.dispatch("infrastructure-ci.yml",{"pull-request":str(pr["number"]),"revision":item["head_sha"]})
+            queue_pr_ci(p,client,pr,item['head_sha'])
             if p["authority"]["merge_enabled"] and not kv("protected:"+item["pr_url"]):
                 try:
                     if p['checks']['application_configured']:

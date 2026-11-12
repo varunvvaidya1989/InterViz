@@ -1,0 +1,227 @@
+name: SDLC - Application CI
+run-name: "SDLC CI ${{ github.event_name }} pr=${{ inputs.pull-request }} sha=${{ inputs.revision }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull-request:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: true
+        description: Exact queued PR head
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: sdlc-application-ci-${{ inputs.pull-request }}-${{ inputs.revision }}
+  cancel-in-progress: false
+
+jobs:
+  target:
+    name: Verify queued PR head
+    if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify current same-repository PR via authenticated API
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pull-request }}
+          TARGET_SHA: ${{ inputs.revision }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, re, urllib.request
+          number, sha = os.environ['PR_NUMBER'], os.environ['TARGET_SHA']
+          assert re.fullmatch(r'[1-9][0-9]*', number)
+          assert re.fullmatch(r'[a-f0-9]{40}', sha)
+          repo = os.environ['GITHUB_REPOSITORY']
+          url = os.environ['GITHUB_API_URL'] + '/repos/' + repo + '/pulls/' + number
+          req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN']})
+          with urllib.request.urlopen(req, timeout=30) as response:
+              pr = json.load(response)
+          assert pr['state'] == 'open'
+          assert pr['head']['sha'] == sha
+          assert pr['head']['repo']['full_name'] == repo
+          assert pr['base']['repo']['full_name'] == repo
+          assert pr['base']['ref'] == os.environ['DEFAULT_BRANCH']
+          PYTHON
+  application-lint:
+    name: application-lint
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required nonempty checks
+        run: |
+          pnpm lint
+  application-typecheck:
+    name: application-typecheck
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required nonempty checks
+        run: |
+          pnpm typecheck
+  application-unit-integration:
+    name: application-unit-integration
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Start isolated synthetic services
+        run: docker compose up -d --wait
+      - name: Run required nonempty checks
+        run: |
+          pnpm test:unit
+          pnpm test:integration
+      - name: Remove isolated services and data
+        if: always()
+        run: docker compose down --volumes
+  application-e2e:
+    name: application-e2e
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Start isolated synthetic services
+        run: docker compose up -d --wait
+      - name: Run required nonempty checks
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+      - name: Remove isolated services and data
+        if: always()
+        run: docker compose down --volumes
+  application-build:
+    name: application-build
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required nonempty checks
+        run: |
+          pnpm build
+  application-i18n-security:
+    name: application-i18n-security
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Check out exact queued revision without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        run: test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required nonempty checks
+        run: |
+          pnpm check:i18n
+          pnpm check:security
