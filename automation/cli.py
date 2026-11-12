@@ -252,7 +252,7 @@ def adopt_submission(p,args):
     story=stories[0]
     expected={'allowed_paths':story['allowed_paths'],'acceptance':story['acceptance'],
               'role':story.get('role','coding'),'kind':story.get('kind','application')}
-    if (item['title']!=story['title'] or digest(item['scope'])!=digest(expected)
+    if (item['title']!=story['title'] or digest(item['scope'])!=digest(_scope(expected))
             or sorted(item['depends_on'])!=sorted(story.get('depends_on',[]))):
         raise ValueError('Lead rework cannot change the original approved task contract.')
     validate_assignment(expected['allowed_paths'],p,infrastructure=expected['kind']=='infrastructure')
