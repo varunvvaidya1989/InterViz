@@ -445,11 +445,25 @@ class Control:
                          and item['epoch']==old['submitted_epoch'] and not item['lease_id'],
                          'lead_rework_already_adopted','Only an unchanged submitted adoption may be replayed.')
                 return self._decoded(item)
-            _require(item['status'] in {'OPEN','IN_PROGRESS'} and not item['head_sha'] and not item['pr_url'],
-                     'prior_submission','Lead adoption cannot replace an existing or previously submitted candidate.')
-            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type IN ('pr_head_associated','submission_recovered')",(release_id,)):
+            prior=[];claims=[];takeover={}
+            for row in db.execute("SELECT seq,type,actor,payload FROM events WHERE release_id=? AND type IN ('pr_head_associated','submission_recovered','item_claimed') ORDER BY seq",(release_id,)):
                 value=json.loads(row['payload'])
-                _require(not (value.get('kind')==kind and value.get('item_id')==item_id),
+                if value.get('kind')!=kind or value.get('item_id')!=item_id:continue
+                (claims if row['type']=='item_claimed' else prior).append((row,value))
+            if item['pr_url']:
+                _require(item['status']=='IN_PROGRESS' and not item['head_sha'] and item['pr_url']==pr_url
+                         and item['lease_id'] and item['lease_worker'] and prior,
+                         'prior_submission','Only an interrupted unsubmitted rework can transfer its existing PR to the lead.')
+                _require(prior and prior[-1][0]['type']=='pr_head_associated' and prior[-1][1].get('pr_url')==pr_url
+                         and claims and claims[-1][0]['seq']>prior[-1][0]['seq']
+                         and claims[-1][1].get('lease_id')==item['lease_id'] and claims[-1][0]['actor']==item['lease_worker']
+                         and evidence.get('pr_author')=='github-actions[bot]',
+                         'unproven_submission','Takeover needs the original bot PR association and exact interrupted claim proof.')
+                _require(head_sha!=prior[-1][1]['head_sha'],'new_lead_head_required','Manual lead takeover requires a distinct new head.')
+                takeover={'takeover':True,'source_head_sha':prior[-1][1]['head_sha'],
+                          'source_lease_id':item['lease_id'],'source_worker_id':item['lease_worker']}
+            else:
+                _require(item['status'] in {'OPEN','IN_PROGRESS'} and not item['head_sha'] and not prior,
                          'prior_submission','Previously submitted work must use ordinary review/recovery rules.')
             _require(item['attempts']==item['max_attempts'] and item['attempts']>0,
                      'attempts_not_exhausted','Use normal bounded implementation while attempts remain.')
@@ -471,10 +485,12 @@ class Control:
             db.execute("UPDATE items SET status='SUBMITTED',head_sha=?,pr_url=?,developer_id=?,author_ids=?,integration_sha=NULL,epoch=epoch+1,lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
                        (head_sha,pr_url,author_id,_json(authors),self.clock(),release_id,kind,item_id))
             self._invalidate(db,release_id)
-            self._event(db,release_id,'lead_submission_adopted',actor,{'kind':kind,'item_id':item_id,
+            payload={'kind':kind,'item_id':item_id,
                         'head_sha':head_sha,'pr_url':pr_url,'author_id':author_id,'plan_hash':plan_hash,'contract':contract,
                         'attempts':item['attempts'],'previous_epoch':item['epoch'],'submitted_epoch':item['epoch']+1,
-                        'scope_hash':release['plan_scope_hash'],'evidence':json.loads(raw)})
+                        'scope_hash':release['plan_scope_hash'],'evidence':json.loads(raw)}
+            payload.update(takeover)
+            self._event(db,release_id,'lead_submission_adopted',actor,payload)
             return self._decoded(self._item(db,release_id,item_id,kind))
 
     def resubmit_lead_submission(self, release_id, item_id, head_sha, pr_url, author_id,

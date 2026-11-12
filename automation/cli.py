@@ -15,7 +15,8 @@ from pathlib import Path
 from .control import Control, ControlError, _scope
 from .github import GitHub, GitHubError, SnapshotStore
 from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT, sanitized_failure_report
-from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
+from .runtime import (changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment,
+                      source_bundle, publish_source_bundle, publisher_checkout, credential_free)
 from .recovery import source_handoff, unchanged_result, verified_pass_report
 from . import ci
 
@@ -262,10 +263,19 @@ def adopt_submission(p,args):
     validate_assignment(expected['allowed_paths'],p,infrastructure=expected['kind']=='infrastructure')
     pr=client.pr(args.pull_request)
     canonical='https://github.com/'+client.repository+'/pull/'+str(args.pull_request)
+    task_events=[event for event in control.events(release_id)
+                 if event['payload'].get('kind')==kind and event['payload'].get('item_id')==item_id]
+    initial=next((event['payload'] for event in task_events if event['type']=='lead_submission_adopted'),None)
+    prior=next((event['payload'] for event in reversed(task_events) if event['type']=='pr_head_associated'),None)
+    bot_proven=(item.get('pr_url')==canonical and
+                ((item['status']=='IN_PROGRESS' and not item.get('head_sha') and item.get('lease_id')
+                  and prior and prior.get('pr_url')==canonical)
+                 or (initial and initial.get('takeover') and initial['pr_url']==canonical and initial['author_id']==actor)))
     def matching(value):
         return (value.get('number')==args.pull_request and value.get('html_url')==canonical
                 and value.get('state')=='open' and not value.get('draft')
-                and value.get('user',{}).get('login')==actor
+                and (value.get('user',{}).get('login')==actor
+                     or (bot_proven and value.get('user',{}).get('login')=='github-actions[bot]'))
                 and value.get('head',{}).get('sha')==args.revision
                 and value.get('head',{}).get('repo',{}).get('full_name')==client.repository
                 and value.get('base',{}).get('ref')==branch
@@ -276,9 +286,6 @@ def adopt_submission(p,args):
     if not matching(client.pr(args.pull_request)):
         raise ValueError('The lead PR changed while its complete scope was being verified.')
     changes=[{k:f[k] for k in ('filename','previous_filename','status') if k in f} for f in files]
-    initial=next((event['payload'] for event in control.events(release_id)
-                  if event['type']=='lead_submission_adopted' and event['payload'].get('kind')==kind
-                  and event['payload'].get('item_id')==item_id),None)
     submit=control.adopt_lead_submission
     if initial and args.lead_contract!=initial['contract']:
         if p['limits']['max_review_rounds']!=2:
@@ -286,7 +293,7 @@ def adopt_submission(p,args):
         submit=control.resubmit_lead_submission
     result=submit(release_id,item_id,args.revision,canonical,actor,actual,args.lead_contract,
             {'execution':run['id'],'workflow':run['path'],'pull_request':pr['number'],
-             'base':branch,'changed_files':changes,'files_sha256':digest(changes)},actor,kind=kind)
+             'pr_author':pr['user']['login'],'base':branch,'changed_files':changes,'files_sha256':digest(changes)},actor,kind=kind)
     kv('protected:'+canonical,protected,True)
     finish_recovery_cache(control)
     return output('lead-submission.json',{'task_id':args.task_id,'revision':args.revision,
@@ -530,7 +537,17 @@ def worker(p,args):
         plan,unused=plan_document(home/"docs/releases"/release_id/"plan.json",p,home)
         if plan["release_id"]!=release_id:raise ValueError("Plan release identity changed.")
         for story in plan["user_stories"]:validate_assignment(story["allowed_paths"],p,infrastructure=story.get("kind")=="infrastructure")
-    return output("worker-result.json",{"role":role,"reference":args.task_id,"worker_id":worker_id,"revision":args.revision,"workspace":str(home),"baseline":before,"after":after,"changed_paths":changed,"report":report,"lease_id":claim.get("lease_id") if claim else None,"kind":kind,"plan_hash":current_hash,'review_contract':REVIEW_CONTRACT if role=='review' else None})
+    result={"role":role,"reference":args.task_id,"worker_id":worker_id,"revision":args.revision,"workspace":str(home),"baseline":before,"after":after,"changed_paths":changed,"report":report,"lease_id":claim.get("lease_id") if claim else None,"kind":kind,"plan_hash":current_hash,'review_contract':REVIEW_CONTRACT if role=='review' else None}
+    if role not in {'review','qa'}:
+        try:
+            result['source_bundle']=source_bundle(home,before,after,changed,item['scope']['allowed_paths'])
+            credential_free(json.dumps(result).encode())
+        except (ValueError,OSError):
+            retain_failure({'summary':'The submitted source failed bounded credential-safe retention checks.',
+                            'verdict':'BLOCKED','findings':[],'evidence':[],
+                            'limitations':['No source bytes or submission were published.']})
+            raise ValueError('Source retention failed; sanitized failure evidence was retained.') from None
+    return output("worker-result.json",result)
 
 
 def recover_result(p,client,control,item,result,source=None):
@@ -708,21 +725,46 @@ def publish_result(p,client,control):
             recover_result(p,client,control,item,result)
             kv(marker,{'published':True,'unchanged':True},True)
             return {'processed_worker':role,'reference':result['reference'],'unchanged':True}
-        home=Path(result["workspace"]).resolve()
-        if not home.is_relative_to((ROOT/".sdlc/workspaces").resolve()):raise ValueError("Worker workspace location is invalid.")
-        if scan_files(home)!=result["after"]:raise ValueError("Worker bytes changed after its handoff.")
         check_changed_paths(changed,item["scope"]["allowed_paths"])
+        home=Path(result["workspace"]).resolve()
+        bundle=result.get('source_bundle')
+        if bundle is None:
+            # Old hash-only artifacts are usable only while their exact live
+            # workspace still exists. Never invent the missing historical bytes.
+            if not home.is_relative_to((ROOT/".sdlc/workspaces").resolve()) or not home.is_dir():
+                raise ValueError('No retained source bytes or original live workspace are available.')
+            if scan_files(home)!=result['after']:raise ValueError('Worker bytes changed after its handoff.')
+            bundle=source_bundle(home,result['baseline'],result['after'],changed,item['scope']['allowed_paths'])
+        def existing_pr(expected_head):
+            pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
+            if (pr.get('html_url')!=item['pr_url'] or pr.get('state')!='open'
+                    or pr.get('head',{}).get('sha')!=expected_head
+                    or pr.get('head',{}).get('repo',{}).get('full_name')!=client.repository
+                    or pr.get('base',{}).get('ref')!=p['repository']['default_branch']
+                    or pr.get('base',{}).get('repo',{}).get('full_name')!=client.repository):
+                raise ValueError('Existing task PR was closed, changed or belongs to another repository/base.')
+            pr_files(client,pr,item,p)
+            return pr
+        prior=existing_pr(result['revision']) if not planning and item.get('pr_url') else None
         clean=ROOT/".sdlc/publish"/uuid.uuid4().hex;clean.parent.mkdir(parents=True,exist_ok=True)
-        git(["clone","--no-hardlinks",str(ROOT),str(clean)],ROOT);git(["checkout","--detach",result["revision"]],clean)
-        branch="agent/"+re.sub(r"[^A-Za-z0-9._-]","-",release_id+"-"+item_id)+"-"+str(item["attempts"])
+        publisher_checkout(ROOT,clean,result['revision'],client.repository)
+        branch=prior['head']['ref'] if prior else "agent/"+re.sub(r"[^A-Za-z0-9._-]","-",release_id+"-"+item_id)+"-"+str(item["attempts"])
         if planning:branch+="-"+uuid.uuid4().hex[:8]
-        git(["checkout","-b",branch],clean);publish_copy(home,clean,changed)
+        git(['check-ref-format','--branch',branch],clean)
+        git(["checkout","-b",branch],clean)
+        publish_source_bundle(bundle,clean,result['baseline'],result['after'],changed,item['scope']['allowed_paths'],
+                              source={**os.environ,'PUBLISH_TOKEN':client.token})
         git(["add","--",*changed],clean)
         git(["-c","user.name=Systems Labs Agent","-c","user.email=41898282+github-actions[bot]@users.noreply.github.com","commit","-m",f"feat({item_id}): {item['title'][:120]}"],clean)
-        sha=git(["rev-parse","HEAD"],clean);git(["push","https://github.com/"+client.repository+".git","HEAD:refs/heads/"+branch],clean,token=client.token)
-        info=client.info();pr=client.request("POST",client.root+"/pulls",{"title":f"[{release_id}/{item_id}] {item['title']}","head":branch,"base":info["default_branch"],"body":report["summary"]+f"\n\n<!-- sdlc:{release_id}:{kind}:{item_id} -->\nPlan: {result['plan_hash']}\nAuthor execution: {result['worker_id']}"})
+        sha=git(["rev-parse","HEAD"],clean)
+        git(['merge-base','--is-ancestor',result['revision'],sha],clean)
+        if prior:existing_pr(result['revision'])
+        git(["push","https://github.com/"+client.repository+".git","HEAD:refs/heads/"+branch],clean,token=client.token)
+        if prior:pr=existing_pr(sha)
+        else:
+            info=client.info();pr=client.request("POST",client.root+"/pulls",{"title":f"[{release_id}/{item_id}] {item['title']}","head":branch,"base":info["default_branch"],"body":report["summary"]+f"\n\n<!-- sdlc:{release_id}:{kind}:{item_id} -->\nPlan: {result['plan_hash']}\nAuthor execution: {result['worker_id']}"})
         if planning:
-            plan_path=home/"docs/releases"/release_id/"plan.json";plan,plan_hash=plan_document(plan_path,p,home)
+            plan_path=clean/"docs/releases"/release_id/"plan.json";plan,plan_hash=plan_document(plan_path,p,clean)
             if plan["release_id"]!=release_id:raise ValueError("Lead plan changed the founder release ID.")
             for story in plan["user_stories"]:
                 validate_assignment(story["allowed_paths"],p,infrastructure=story.get("kind")=="infrastructure")
@@ -731,8 +773,6 @@ def publish_result(p,client,control):
             client.comment(pr["number"],"Founder review: open the founder dashboard, review the plan and select Approve plan. No command comment is needed. Changes to stories, specification or policy require renewed approval.")
         else:
             control.associate_pr(release_id,item_id,sha,pr["html_url"],result["worker_id"],result["worker_id"],kind=kind,lease_id=result["lease_id"])
-            if item.get("pr_url") and item["pr_url"]!=pr["html_url"]:
-                old=int(item["pr_url"].rsplit("/",1)[1]);client.comment(old,"Superseded by bounded rework: "+pr["html_url"]);client.request("PATCH",client.root+f"/pulls/{old}",{"state":"closed"})
         kv("protected:"+pr["html_url"],protected_changes(changed,p),True)
     kv(marker,{"published":True},True);kv("queue:"+role+":"+result["reference"],None,True);return {"processed_worker":role,"reference":result["reference"]}
 
