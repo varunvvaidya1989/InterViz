@@ -18,6 +18,7 @@ from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CO
 from .runtime import (changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment,
                       source_bundle, publish_source_bundle, publisher_checkout, credential_free)
 from .recovery import source_handoff, unchanged_result, verified_pass_report
+from . import ci
 
 from .approvals import validate_intent
 
@@ -357,6 +358,30 @@ def pr_files(client,pr,item,p):
 
 
 def record_ci_run(p,client,control,run):
+    if p['checks']['application_configured']:
+        # The notification is only a wake-up hint, never evidence. Re-fetch
+        # every required workflow and its latest attempt from trusted API facts.
+        snapshot=control.snapshot()
+        released={release['id'] for release in snapshot['releases'] if release['state']=='RELEASED'}
+        approved=set()
+        for release in snapshot['releases']:
+            if release['id'] in released:continue
+            try:require_current_plan(p,control,release['id'])
+            except (ValueError,ControlError):continue
+            approved.add(release['id'])
+        for item in snapshot['items']:
+            if (item.get('head_sha') and item.get('pr_url') and item['status'] in {'SUBMITTED','INTEGRATED','DONE'}
+                    and item['release_id'] in approved):
+                try:
+                    pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
+                    pr_files(client,pr,item,p)
+                except (GitHubError,KeyError,TypeError,ValueError):
+                    control.record_ci(item['release_id'],item['id'],item['head_sha'],False,
+                                      {'head':item['head_sha'],'result':'unavailable_or_invalid_pr_scope_facts'},
+                                      'github:ci-aggregate',kind=item['kind'])
+                    continue
+                ci.reconcile_item(p,client,control,item,lambda head:kv('ci-queued:'+head),verified_pr=pr)
+        return
     expected=client.request("GET",client.root+"/actions/workflows/infrastructure-ci.yml")
     if run.get("workflow_id")!=expected["id"] or run.get("status")!="completed":return
     # GitHub can complete a run while it awaits maintainer approval, before any
@@ -377,6 +402,10 @@ def record_ci_run(p,client,control,run):
         if pr["head"]["sha"]!=target or pr["head"]["repo"]["full_name"]!=client.repository:continue
         for item in control.snapshot()["items"]:
             if item.get("pr_url")!=pr["html_url"] or item.get("head_sha")!=target:continue
+            if item.get('scope',{}).get('kind')=='application':
+                control.record_ci(item['release_id'],item['id'],target,False,
+                                  {'result':'application_checks_unconfigured'},'github:ci-aggregate',kind=item['kind'])
+                continue
             _,protected=pr_files(client,pr,item,p)
             # A PR cannot redefine the CI that certifies itself.
             base=client.file(".github/workflows/infrastructure-ci.yml",client.info()["default_branch"])
@@ -809,8 +838,11 @@ def reconcile(p,args):
         except (ValueError,ControlError):continue
     finish_recovery_cache(control)
     recovered=recover_interrupted(p,client,control)
-    for run in client.pages(client.root+"/actions/workflows/infrastructure-ci.yml/runs",key="workflow_runs"):
-        if run.get("status")=="completed":record_ci_run(p,client,control,run)
+    if p['checks']['application_configured']:
+        record_ci_run(p,client,control,{})
+    else:
+        for run in client.pages(client.root+"/actions/workflows/infrastructure-ci.yml/runs",key="workflow_runs"):
+            if run.get("status")=="completed":record_ci_run(p,client,control,run)
     for release in control.snapshot()["releases"]:
         if release["state"]=="RELEASED":continue
         if release["state"]=="DRAFT" and not kv("plan:"+release["id"]):
@@ -862,6 +894,8 @@ def reconcile(p,args):
                 client.dispatch("infrastructure-ci.yml",{"pull-request":str(pr["number"]),"revision":item["head_sha"]})
             if p["authority"]["merge_enabled"] and not kv("protected:"+item["pr_url"]):
                 try:
+                    if p['checks']['application_configured']:
+                        ci.reconcile_item(p,client,control,item,lambda head:kv('ci-queued:'+head))
                     # Dry precondition: inspect signed exact-revision review/CI
                     # facts before allowing any GitHub merge side effect.
                     import sqlite3
