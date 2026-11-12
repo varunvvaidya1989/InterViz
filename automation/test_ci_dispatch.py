@@ -17,11 +17,12 @@ class DispatchAPI(API):
         super().__init__()
         self.calls = []
         self.fail = None
+        self.fail_status = 422
         self.runs = {name: [] for name in self.runs}
 
     def dispatch(self, filename, inputs):
         if self.fail == filename:
-            raise GitHubError('fixture dispatch unavailable')
+            raise GitHubError('fixture dispatch unavailable', self.fail_status)
         self.calls.append((filename, inputs))
         self.runs[filename].append(dict(
             id=len(self.calls), workflow_id=1 if filename == 'infrastructure-ci.yml' else 2,
@@ -35,6 +36,8 @@ class CIDispatch(unittest.TestCase):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
         self.db_patch = patch.object(cli, 'DB', Path(temp.name)/'state.sqlite3')
         self.db_patch.start(); self.addCleanup(self.db_patch.stop)
+        out_patch = patch.object(cli, 'OUT', Path(temp.name)/'output')
+        out_patch.start(); self.addCleanup(out_patch.stop)
         self.p = cli.policy(); self.p['repository']['full_name'] = API.repository
         self.api = DispatchAPI()
         self.item = {'head_sha': H}
@@ -66,7 +69,7 @@ class CIDispatch(unittest.TestCase):
     def test_missed_receipt_recovers_visible_run_without_duplicate(self):
         real_kv = cli.kv
         def crash(key, value=None, write=False):
-            if write and key.endswith(':infrastructure-ci.yml'):
+            if write and key.startswith('ci-dispatch:') and key.endswith(':infrastructure-ci.yml'):
                 raise RuntimeError('fixture process interruption after dispatch')
             return real_kv(key, value, write)
         with patch.object(cli, 'kv', side_effect=crash):
@@ -74,6 +77,54 @@ class CIDispatch(unittest.TestCase):
         self.queue(); self.queue()
         self.assertEqual(len(self.api.calls), 2)
         self.assertTrue(cli.kv(f'ci-dispatch:1:{H}:infrastructure-ci.yml')['recovered'])
+
+    def test_accepted_dispatch_with_lost_receipt_and_delayed_visibility_is_not_repeated(self):
+        real_kv = cli.kv
+        def crash(key, value=None, write=False):
+            if write and key == f'ci-dispatch:1:{H}:infrastructure-ci.yml':
+                raise RuntimeError('fixture interruption after accepted dispatch')
+            return real_kv(key, value, write)
+        with patch.object(cli, 'kv', side_effect=crash):
+            with self.assertRaises(RuntimeError): self.queue()
+        self.assertEqual(len(self.api.calls), 1)
+        self.assertTrue(cli.kv(f'ci-dispatch-intent:1:{H}:infrastructure-ci.yml'))
+        listing = self.api.pages
+        def delayed(path, key=None):
+            if '/infrastructure-ci.yml/runs' in path: return []
+            return listing(path, key)
+        with patch.object(self.api, 'pages', side_effect=delayed):
+            self.queue(); self.queue()
+        self.assertEqual([name for name, _ in self.api.calls],
+                         ['infrastructure-ci.yml', 'application-ci.yml'])
+        self.assertIsNone(cli.kv(f'ci-dispatch:1:{H}:infrastructure-ci.yml'))
+        self.assertIn('WAITING_FOR_DISPATCH_EVIDENCE', (cli.OUT/'ci-dispatch-status.json').read_text())
+        self.queue()
+        self.assertEqual(len(self.api.calls), 2)
+        self.assertTrue(cli.kv(f'ci-dispatch:1:{H}:infrastructure-ci.yml')['recovered'])
+
+    def test_accepted_request_followed_by_transport_error_waits_for_evidence(self):
+        dispatch = self.api.dispatch
+        def accepted_then_error(filename, inputs):
+            dispatch(filename, inputs)
+            if filename == 'infrastructure-ci.yml':
+                raise GitHubError('fixture response lost', 503)
+        with patch.object(self.api, 'dispatch', side_effect=accepted_then_error):
+            with self.assertRaises(GitHubError): self.queue()
+        listing = self.api.pages
+        with patch.object(self.api, 'pages', side_effect=lambda path, key=None:
+                          [] if '/infrastructure-ci.yml/runs' in path else listing(path, key)):
+            self.queue(); self.queue()
+        self.assertEqual([name for name, _ in self.api.calls],
+                         ['infrastructure-ci.yml', 'application-ci.yml'])
+        self.queue()
+        self.assertEqual(len(self.api.calls), 2)
+
+    def test_interrupted_intent_without_visible_run_stays_blocked(self):
+        cli.kv(f'ci-dispatch-intent:1:{H}:infrastructure-ci.yml',
+               {'pr': 1, 'head': H, 'workflow_id': 1}, True)
+        self.queue(); self.queue()
+        self.assertEqual([name for name, _ in self.api.calls], ['application-ci.yml'])
+        self.assertIsNone(cli.kv(f'ci-dispatch:1:{H}:infrastructure-ci.yml'))
 
     def test_reject_stale_fork_wrong_base_and_malformed_head_without_receipts(self):
         original = copy.deepcopy(self.api.pull)

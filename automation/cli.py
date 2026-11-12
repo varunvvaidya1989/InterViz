@@ -358,10 +358,12 @@ def pr_files(client,pr,item,p):
 
 
 def queue_ci(p, client, item, pr):
-    """Recover missed bot events per workflow without consuming failed dispatches.
+    """Recover bot events without repeating an ambiguously accepted dispatch.
 
     A run found after a dispatch/save interruption repairs the durable receipt.
-    A transport error without a visible run is retried on the next reconcile.
+    Persist intent before calling GitHub. Missing run visibility is not proof
+    that a request was rejected: ambiguous requests wait for evidence instead
+    of being redispatched. Only definitive HTTP rejection permits a retry.
     """
     head = item['head_sha']
     repository = p['repository']['full_name']
@@ -384,6 +386,7 @@ def queue_ci(p, client, item, pr):
         # Application dispatch may fail until the separately accepted workflow
         # exists on the default branch; no success receipt is written then.
         key = f"ci-dispatch:{pr['number']}:{head}:{filename}"
+        intent_key = f"ci-dispatch-intent:{pr['number']}:{head}:{filename}"
         if kv(key):
             continue
         expected = client.request('GET', client.root + '/actions/workflows/' + filename)
@@ -395,9 +398,25 @@ def queue_ci(p, client, item, pr):
                         and run.get('repository', {}).get('full_name') == repository
                         for run in client.pages(client.root + '/actions/workflows/' + filename + '/runs', key='workflow_runs'))
         if not recovered:
+            if kv(intent_key):
+                # This includes process interruption before/after the API call.
+                # GitHub has no idempotency key, so do not guess that no run
+                # was accepted merely because it is not visible in the API yet.
+                output('ci-dispatch-status.json', dict(receipt, workflow=filename,
+                       status='WAITING_FOR_DISPATCH_EVIDENCE',
+                       reason='An earlier dispatch is ambiguous; automatic repetition is blocked.'))
+                continue
             if ci.pr_identity(client.pr(pr['number'])) != ci.pr_identity(pr):
                 raise ValueError('PR changed before CI dispatch.')
-            client.dispatch(filename, {'pull-request': str(pr['number']), 'revision': head})
+            kv(intent_key, dict(receipt, workflow_id=expected['id']), True)
+            try:
+                client.dispatch(filename, {'pull-request': str(pr['number']), 'revision': head})
+            except GitHubError as error:
+                # These responses explicitly reject creation. Transport errors,
+                # timeouts and 5xx may occur after acceptance and stay ambiguous.
+                if error.status in {400, 401, 403, 404, 422, 429}:
+                    kv(intent_key, None, True)
+                raise
         kv(key, dict(receipt, workflow_id=expected['id'], recovered=recovered), True)
         queued.append(filename)
     return queued
