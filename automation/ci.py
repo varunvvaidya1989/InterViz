@@ -48,12 +48,14 @@ def latest_executions(client, filename, head, number, queued):
             run = client.request('GET', client.root + '/actions/runs/' + str(summary['id']))
             if run.get('id') != summary['id']:
                 raise ValueError('Run identity changed while collecting CI facts.')
-            stamp = run.get('updated_at')
+            # GitHub defines run_started_at as the latest run's start and
+            # resets it on rerun. Completion updates cannot order executions.
+            stamp = run.get('run_started_at')
             if not isinstance(stamp, str):
-                raise ValueError('Execution recency is unavailable.')
+                raise ValueError('Execution start is unavailable.')
             updated = datetime.fromisoformat(stamp.replace('Z', '+00:00'))
             if updated.tzinfo is None:
-                raise ValueError('Execution recency must include a timezone.')
+                raise ValueError('Execution start must include a timezone.')
             candidates.append((updated.timestamp(), run))
         if not candidates:
             return []
@@ -96,7 +98,7 @@ def collect(p, client, pr, queued, application=True):
         ok = True
         for run in selected:
             attempt = run.get('run_attempt')
-            detail = {'run_id': run.get('id'), 'attempt': attempt, 'updated_at': run.get('updated_at'),
+            detail = {'run_id': run.get('id'), 'attempt': attempt, 'run_started_at': run.get('run_started_at'), 'updated_at': run.get('updated_at'),
                       'status': run.get('status'), 'conclusion': run.get('conclusion')}
             facts['executions'].append(detail)
             target, numbers = target_pr(run, queued)
@@ -132,7 +134,7 @@ def collect(p, client, pr, queued, application=True):
             passed=False
             facts['result']='execution_changed_after_collection'
             facts['current_executions']=[{key:run.get(key) for key in
-                ('id','run_attempt','updated_at','status','conclusion')} for run in current_runs]
+                ('id','run_attempt','run_started_at','updated_at','status','conclusion')} for run in current_runs]
     current = client.pr(pr['number'])
     passed = passed and pr_identity(current) == identity
     return bool(passed), evidence

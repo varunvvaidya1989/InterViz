@@ -29,7 +29,7 @@ class API:
             run = dict(id=number, run_number=number, run_attempt=1, workflow_id=number, path=path,
                        repository={'full_name': self.repository}, head_repository={'full_name': self.repository},
                        head_sha=H, event='pull_request', pull_requests=[{'number': 1}],
-                       status='completed', conclusion='success', updated_at=f'2026-11-12T10:00:0{number}Z')
+                       status='completed', conclusion='success', run_started_at=f'2026-11-12T10:00:0{number}Z', updated_at=f'2026-11-12T10:00:0{number}Z')
             self.runs[filename] = [run]
             self.jobs[number] = [dict(id=10+i, name=name, run_id=number, run_attempt=1,
                                      status='completed', conclusion='success') for i, name in enumerate(names)]
@@ -105,7 +105,7 @@ class ApplicationCI(unittest.TestCase):
 
     def test_newer_run_supersedes_success_independent_of_list_order(self):
         run = copy.deepcopy(self.api.runs['application-ci.yml'][0])
-        run.update(id=3, run_number=3, conclusion='cancelled', updated_at='2026-11-12T10:00:03Z')
+        run.update(id=3, run_number=3, conclusion='cancelled', run_started_at='2026-11-12T10:00:03Z',updated_at='2026-11-12T10:00:03Z')
         self.api.runs['application-ci.yml'].insert(0, run)
         self.api.jobs[3] = []
         self.record(); self.blocked()
@@ -134,14 +134,15 @@ class ApplicationCI(unittest.TestCase):
 
     def add_newer_success(self, stamp='2026-11-12T10:00:03Z'):
         run=copy.deepcopy(self.api.runs['application-ci.yml'][0])
-        run.update(id=3,run_number=3,updated_at=stamp)
+        run.update(id=3,run_number=3,run_attempt=1,status='completed',conclusion='success',
+                   run_started_at=stamp,updated_at=stamp)
         self.api.runs['application-ci.yml'].append(run)
         self.api.jobs[3]=[{**job,'id':job['id']+20,'run_id':3} for job in self.api.jobs[2]]
         return run
 
     def test_integrated_item_failed_rerun_revokes_downstream_eligibility(self):
         self.record();self.control.integrate('R','S',H,'c'*40,'controller')
-        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:04Z')
+        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',run_started_at='2026-11-12T10:00:04Z',updated_at='2026-11-12T10:00:04Z')
         self.record();self.blocked()
         self.assertEqual(self.control.snapshot()['items'][0]['status'],'INTEGRATED')
         with self.assertRaises(ControlError):self.control.start_qa('R','c'*40,'qa')
@@ -149,21 +150,21 @@ class ApplicationCI(unittest.TestCase):
     def test_done_item_failed_rerun_invalidates_qa_and_candidate(self):
         self.record();self.control.integrate('R','S',H,'c'*40,'controller')
         self.control.start_qa('R','c'*40,'qa');self.control.complete_qa('R','c'*40,{'fixture':'QA'},'qa')
-        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:04Z')
+        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',run_started_at='2026-11-12T10:00:04Z',updated_at='2026-11-12T10:00:04Z')
         self.record();self.blocked()
         self.assertFalse(self.control.snapshot()['releases'][0]['qa_passed'])
         with self.assertRaises(ControlError):self.control.freeze_candidate('R','c'*40,'founder')
 
     def test_later_failed_rerun_of_older_run_supersedes_newer_run_number(self):
         self.add_newer_success();self.record();self.ready()
-        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:04Z')
+        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',run_started_at='2026-11-12T10:00:04Z',updated_at='2026-11-12T10:00:04Z')
         for reverse in (False,True):
             if reverse:self.api.runs['application-ci.yml'].reverse()
             self.record();self.blocked()
 
     def test_stale_list_summary_cannot_hide_a_current_failed_rerun(self):
         self.add_newer_success();summaries=copy.deepcopy(self.api.runs['application-ci.yml'])
-        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:04Z')
+        self.api.runs['application-ci.yml'][0].update(run_attempt=2,conclusion='failure',run_started_at='2026-11-12T10:00:04Z',updated_at='2026-11-12T10:00:04Z')
         original=self.api.pages
         def pages(path,key=None):
             if path.endswith('/application-ci.yml/runs'):return copy.deepcopy(summaries)
@@ -179,9 +180,9 @@ class ApplicationCI(unittest.TestCase):
     def test_missing_invalid_or_timezone_free_execution_recency_revokes_green(self):
         for stamp in (None,'invalid','2026-11-12T10:00:02'):
             with self.subTest(stamp=stamp):
-                self.api.runs['application-ci.yml'][0]['updated_at']='2026-11-12T10:00:02Z'
+                self.api.runs['application-ci.yml'][0]['run_started_at']='2026-11-12T10:00:02Z'
                 self.record();self.ready()
-                self.api.runs['application-ci.yml'][0]['updated_at']=stamp
+                self.api.runs['application-ci.yml'][0]['run_started_at']=stamp
                 self.record();self.blocked()
 
     def test_execution_started_while_fetching_jobs_revokes_prior_success(self):
@@ -262,7 +263,7 @@ class ApplicationCI(unittest.TestCase):
             if '/runs/2/attempts/1/jobs' in path and not changed:
                 changed=True
                 self.api.runs['infrastructure-ci.yml'][0].update(
-                    run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:05Z')
+                    run_attempt=2,conclusion='failure',run_started_at='2026-11-12T10:00:05Z',updated_at='2026-11-12T10:00:05Z')
             return original(path,key)
         with patch.object(self.api,'pages',side_effect=pages):self.record()
         self.assertTrue(changed);self.blocked()
@@ -300,3 +301,40 @@ class ApplicationCI(unittest.TestCase):
                     return original(path,key)
                 with patch.object(self.api,'pages',side_effect=pages):self.record()
                 self.assertTrue(changed);self.blocked()
+
+    def test_older_execution_finishing_late_cannot_hide_a_newer_failed_execution(self):
+        old=self.api.runs['application-ci.yml'][0]
+        old.update(run_started_at='2026-11-12T10:00:00Z',updated_at='2026-11-12T10:00:05Z')
+        newer=self.add_newer_success('2026-11-12T10:00:02Z')
+        newer.update(run_attempt=2,updated_at='2026-11-12T10:00:04Z',conclusion='failure')
+        self.api.jobs[3]=[]
+        self.record();self.blocked()
+        with self.control._tx(False) as db:
+            import json
+            evidence=json.loads(db.execute('SELECT evidence FROM ci_runs ORDER BY seq DESC LIMIT 1').fetchone()['evidence'])
+        execution=evidence['workflows'][1]['executions'][0]
+        self.assertEqual(execution['run_id'],3)
+        self.assertEqual(execution['run_started_at'],'2026-11-12T10:00:02Z')
+
+    def test_latest_started_success_supersedes_an_older_failure_that_finishes_later(self):
+        old=self.api.runs['application-ci.yml'][0]
+        old.update(run_started_at='2026-11-12T10:00:00Z',updated_at='2026-11-12T10:00:08Z',conclusion='failure')
+        self.api.jobs[2]=[]
+        self.add_newer_success('2026-11-12T10:00:02Z')
+        self.api.jobs[3]=[dict(id=30+i,name=name,run_id=3,run_attempt=1,status='completed',conclusion='success')
+                          for i,name in enumerate(self.p['gates']['required_application_status_checks'])]
+        self.record();self.ready()
+
+    def test_latest_started_rerun_of_older_run_beats_later_completion_and_run_number(self):
+        newer_number=self.add_newer_success('2026-11-12T10:00:03Z')
+        newer_number.update(updated_at='2026-11-12T10:00:08Z',conclusion='failure')
+        rerun=self.api.runs['application-ci.yml'][0]
+        rerun.update(run_attempt=2,run_started_at='2026-11-12T10:00:04Z',updated_at='2026-11-12T10:00:05Z')
+        for job in self.api.jobs[2]:job['run_attempt']=2
+        self.record();self.ready()
+
+    def test_latest_started_pending_rerun_of_older_run_blocks_prior_success(self):
+        self.add_newer_success('2026-11-12T10:00:03Z')
+        self.api.runs['application-ci.yml'][0].update(run_attempt=2,run_started_at='2026-11-12T10:00:04Z',
+            updated_at='2026-11-12T10:00:04Z',status='queued',conclusion=None)
+        self.record();self.blocked()
