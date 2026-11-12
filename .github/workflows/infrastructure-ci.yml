@@ -2,24 +2,23 @@ name: SDLC - Infrastructure CI
 run-name: "SDLC CI ${{ github.event_name }} pr=${{ inputs.pull-request || github.event.pull_request.number || 0 }} sha=${{ inputs.revision || github.event.pull_request.head.sha || github.sha }}"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main, master]
   workflow_dispatch:
     inputs:
       pull-request:
         type: string
-        default: "0"
+        required: true
       revision:
         type: string
+        required: true
         description: Exact queued PR head for bot-created pull requests
 
 permissions:
   contents: read
 
 concurrency:
-  group: sdlc-infrastructure-ci-${{ github.event.pull_request.number || github.ref }}
+  group: sdlc-infrastructure-ci-${{ inputs.pull-request || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,6 +35,12 @@ jobs:
         with:
           ref: ${{ inputs.revision || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -48,17 +53,6 @@ jobs:
           python -m unittest discover -s automation -p 'test_*.py' -v 2>&1 | tee .sdlc/output/infrastructure-unit-tests.log
       - name: Validate infrastructure contract for this exact commit
         run: python -m automation.cli validate --scope infrastructure --revision "$SDLC_TARGET_REVISION"
-      - name: Run application checks when configured
-        run: |
-          python - <<'PY'
-          import os
-          from automation.cli import policy, validate
-          p = policy()
-          if p['checks']['application_configured']:
-              validate(p, 'application', os.environ['SDLC_TARGET_REVISION'])
-          else:
-              print('Application checks await the approved SaaS bootstrap; infrastructure CI only.')
-          PY
       - name: Retain CI evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

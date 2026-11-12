@@ -1,0 +1,301 @@
+name: SDLC - Application CI
+run-name: "SDLC CI ${{ github.event_name }} pr=${{ inputs.pull-request || 0 }} sha=${{ inputs.revision || github.sha }}"
+
+# Only default-branch definitions may execute candidate code. Bot PRs are
+# dispatched by the signed controller; scheduled reconciliation repairs misses.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      pull-request:
+        type: string
+        required: true
+        description: Controller-queued PR number
+      revision:
+        type: string
+        required: true
+        description: Exact controller-queued PR head
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdlc-application-ci-${{ inputs.pull-request || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-lint:
+    name: application-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm lint
+
+  application-typecheck:
+    name: application-typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+
+  application-unit-integration:
+    name: application-unit-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+      DATABASE_URL: postgresql://ci:synthetic-ci-only@localhost:5432/app_test
+      REDIS_URL: redis://localhost:6379/0
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MAIL_FROM: ci@example.invalid
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: app_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci -d app_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      mail:
+        image: axllent/mailpit:v1.27
+        ports: ['1025:1025', '8025:8025']
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm test:unit --reporter=junit --outputFile=unit.xml
+          pnpm test:integration --reporter=junit --outputFile=integration.xml
+          python3 - <<'PYTEST'
+          import xml.etree.ElementTree as ET
+          for path in ('unit.xml', 'integration.xml'):
+              root = ET.parse(path).getroot()
+              assert sum(int(s.get('tests', 0)) - int(s.get('skipped', 0)) for s in root.iter('testsuite')) > 0, path
+          PYTEST
+
+  application-e2e:
+    name: application-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+      DATABASE_URL: postgresql://ci:synthetic-ci-only@localhost:5432/app_test
+      REDIS_URL: redis://localhost:6379/0
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MAIL_FROM: ci@example.invalid
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: app_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci -d app_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      mail:
+        image: axllent/mailpit:v1.27
+        ports: ['1025:1025', '8025:8025']
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec playwright install --with-deps chromium
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE=e2e.xml pnpm test:e2e --reporter=junit
+          python3 - <<'PYTEST'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('e2e.xml').getroot()
+          assert sum(int(s.get('tests', 0)) - int(s.get('skipped', 0)) for s in root.iter('testsuite')) > 0
+          PYTEST
+
+  application-build:
+    name: application-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm build
+
+  application-i18n-security:
+    name: application-i18n-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      SDLC_TARGET_REVISION: ${{ inputs.revision || github.sha }}
+    steps:
+      - name: Check out exact candidate without credentials
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+          persist-credentials: false
+      - name: Assert exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SDLC_TARGET_REVISION" =~ ^[a-f0-9]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SDLC_TARGET_REVISION"
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: package.json
+      - name: Install frozen workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run required check
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm check:i18n
+          pnpm check:security
+

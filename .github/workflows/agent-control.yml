@@ -5,7 +5,7 @@ on:
     types: [opened, edited, labeled, reopened]
   push:
     branches: [main]
-    paths: ['automation/**', '.github/workflows/agent-control.yml']
+    paths: ['automation/**', '.github/workflows/agent-control.yml', '.github/workflows/application-ci.yml', '.github/workflows/infrastructure-ci.yml']
   issue_comment:
     types: [created]
   schedule:
