@@ -15,7 +15,7 @@ on:
       action:
         description: Trusted controller action; reconcile schedules ready ledger tasks
         type: choice
-        options: [event, reconcile, worker, provider-check, adopt-submission]
+        options: [event, reconcile, worker, provider-check, adopt-submission, recover-publication]
         default: reconcile
         required: true
       role:
@@ -31,6 +31,12 @@ on:
         type: string
       pull-request:
         description: Concrete founder-authored lead-rework PR to submit for fresh review
+        type: string
+      accept-ci-workflow-blob:
+        description: Optional separately founder-accepted exact infrastructure CI blob SHA
+        type: string
+      source-run-id:
+        description: Failed trusted worker run containing the exact retained source
         type: string
       plan-hash:
         description: Existing approved plan hash; adoption cannot approve a changed plan
@@ -67,6 +73,8 @@ jobs:
       SDLC_TASK_ID: ${{ inputs.task-id || '' }}
       SDLC_TARGET_REVISION: ${{ inputs.revision || '' }}
       SDLC_PULL_REQUEST: ${{ inputs.pull-request || '' }}
+      SDLC_ACCEPT_CI_WORKFLOW_BLOB: ${{ inputs.accept-ci-workflow-blob || '' }}
+      SDLC_SOURCE_RUN_ID: ${{ inputs.source-run-id || '' }}
       SDLC_PLAN_HASH: ${{ inputs.plan-hash || '' }}
       SDLC_LEAD_CONTRACT: ${{ inputs.lead-contract || '' }}
       SDLC_OUTPUT_DIR: .sdlc/output
@@ -103,6 +111,18 @@ jobs:
           --pull-request "$SDLC_PULL_REQUEST"
           --plan-hash "$SDLC_PLAN_HASH"
           --lead-contract "$SDLC_LEAD_CONTRACT"
+      - name: Recover exact retained first publication
+        id: publication_recovery
+        if: env.SDLC_ACTION == 'recover-publication'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python -m automation.cli recover-publication
+          --task-id "$SDLC_TASK_ID"
+          --revision "$SDLC_TARGET_REVISION"
+          --pull-request "$SDLC_PULL_REQUEST"
+          --source-run-id "$SDLC_SOURCE_RUN_ID"
+          --accept-ci-workflow-blob "$SDLC_ACCEPT_CI_WORKFLOW_BLOB"
       - name: Build trusted worker execution image
         if: env.SDLC_ACTION == 'worker'
         run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
@@ -127,9 +147,12 @@ jobs:
           docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .
           python -m automation.cli probe
       - name: Reconcile policy and schedule permitted next work
-        if: always() && steps.restore.outcome == 'success'
+        if: >-
+          always() && steps.restore.outcome == 'success' &&
+          (env.SDLC_ACTION != 'recover-publication' || steps.publication_recovery.outcome == 'success')
         env:
           GH_TOKEN: ${{ github.token }}
+          SDLC_PUBLISH_TOKEN: ${{ secrets.SDLC_PUBLISH_TOKEN }}
         run: python -m automation.cli reconcile --event-path "$GITHUB_EVENT_PATH"
       - name: Save signed ledger with compare-and-swap
         if: always() && steps.restore.outcome == 'success'
