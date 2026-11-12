@@ -1,0 +1,51 @@
+{
+  "release_id": "R-1",
+  "revision": "ba8062a750c83247d0694ac7febe4e0758d4bd85",
+  "status": "SUBMITTED",
+  "planning_only": true,
+  "canonical_approval_hash": "cfdb4e26aba485a4e302d0bdddbc91fb140365c7df37d0c7eada49f83bafa45d",
+  "plan_file_sha256": "1cc3d8d3342dc46097a76716ac8cbcf6b88918665f1f6fe67c6f01c7f2e47f98",
+  "checks": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 docs/releases/R-1/validate_plan.py",
+      "result": "PASS",
+      "details": "36 flat tasks; acyclic known dependencies, policy-valid allowed paths, serialized overlapping ownership and matching supporting-document digests."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m unittest discover -s docs/releases/R-1/proposed_tests -p test_release_lifecycle.py -v",
+      "result": "PASS",
+      "tests_run": 1,
+      "classification": "Local synthetic ledger fixture only; direct ledger QA/fix/acceptance gates, not hosted scheduling/staging success."
+    },
+    {
+      "command": "Python ast.parse on all proposed Python files; final-newline/trailing-whitespace checks on authored files",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS",
+      "details": "Tracked diff only; authored untracked files additionally checked separately."
+    }
+  ],
+  "not_run": [
+    "Proposed amendment primitive and authenticated CLI regressions: required APIs absent",
+    "Proposed application-check and staging provenance regressions: required modules absent",
+    "CLI automatic QA scheduling regression extensions",
+    "Application unit/integration/E2E and hosted CI",
+    "Actual staging/email/OAuth/recovery/performance/accessibility/physical-device checks"
+  ],
+  "limitations": [
+    "No independent acceptance by this author.",
+    "Controller must publish revised planning PR and recompute/store canonical submitted hash before founder approval.",
+    "Infrastructure prerequisites remain proposed, require explicit task assignment/protected acceptance; no code/policy change here.",
+    "Remote ledger not accessed; trusted controller must verify no started attempts before replacing task graph.",
+    "No application implementation/merge/push/publication/deployment or GitHub API access."
+  ],
+  "usage": {
+    "models_or_subagents_spawned": 0,
+    "paid_provider_calls_initiated_by_worker": 0,
+    "measured_model_tokens": null,
+    "measured_provider_cost": null,
+    "note": "Runtime token/cost telemetry unavailable to worker; no inferred spending cap or invented measurements."
+  }
+}
