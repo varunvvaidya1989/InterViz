@@ -487,6 +487,23 @@ def record_ci_run(p,client,control,run):
                 if not any(e['type']=='recovered_ci_workflow_accepted' and e['actor'] in p['founders']['usernames']
                            and e['payload']==acceptance for e in control.events(item['release_id'])):
                     raise ValueError("CI workflow changes need separate trusted acceptance.")
+                # Acceptance binds a definition, not merely a workflow name/ID.
+                # Bootstrap dispatch executes trusted main's existing definition
+                # against the candidate; a PR run executes the accepted candidate
+                # definition. Neither may substitute an unrelated branch's file.
+                info=client.info();execution_sha=run.get('head_sha','')
+                if (type(info.get('id')) is not int or run.get('repository',{}).get('id')!=info['id']
+                        or run.get('head_repository',{}).get('id')!=info['id']
+                        or run.get('path')!='.github/workflows/infrastructure-ci.yml'
+                        or not isinstance(execution_sha,str)
+                        or not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',execution_sha)):
+                    raise ValueError('Accepted CI run lacks trusted execution provenance.')
+                executed=client.file('.github/workflows/infrastructure-ci.yml',execution_sha)
+                if run['event']=='workflow_dispatch':
+                    trusted=(run.get('head_branch')==info['default_branch'] and executed['sha']==base['sha'])
+                else:
+                    trusted=(execution_sha==target and executed['sha']==proposed['sha'])
+                if not trusted:raise ValueError('Accepted CI run executed an unapproved workflow definition.')
             passed=run.get("conclusion")=="success"
             control.record_ci(item["release_id"],item["id"],target,passed,{"run_id":run["id"],"url":run["html_url"],"workflow_id":expected["id"]},"github:ci",kind=item["kind"])
             client.request("POST",client.root+"/check-runs",{"name":"sdlc-infrastructure-ci","head_sha":target,"status":"completed","conclusion":"success" if passed else "failure","output":{"title":"Verified CI provenance","summary":run["html_url"]}})

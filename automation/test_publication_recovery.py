@@ -181,12 +181,14 @@ class FirstPublicationTests(unittest.TestCase):
     def test_changed_ci_definition_needs_exact_current_receipt_and_failed_run_stays_failed(self):
         self.recover();blob='c'*40
         client=MagicMock();client.repository='test/repo';client.root='/repos/test/repo'
-        client.pr.return_value=self.pr;client.info.return_value={'default_branch':'main'}
+        client.pr.return_value=self.pr;client.info.return_value={'id':1,'default_branch':'main'}
         client.pages.return_value=[{'filename':'automation/a.py'}]
         client.file.side_effect=lambda path,ref:{'sha':'d'*40 if ref=='main' else blob}
         client.request.return_value={'id':8}
         run={'id':44,'workflow_id':8,'status':'completed','event':'pull_request','head_sha':self.head,
-             'pull_requests':[{'number':71}],'conclusion':'failure','html_url':'https://github.com/test/repo/actions/runs/44'}
+             'pull_requests':[{'number':71}],'conclusion':'failure','html_url':'https://github.com/test/repo/actions/runs/44',
+             'path':'.github/workflows/infrastructure-ci.yml','head_branch':'agent/task',
+             'repository':{'id':1},'head_repository':{'id':1}}
         with patch.object(cli,'kv',return_value=None),patch.object(cli,'require_current_plan',return_value=({},PLAN)):
             with self.assertRaisesRegex(ValueError,'separate trusted acceptance'):
                 cli.record_ci_run(self.p,client,self.control,run)
@@ -207,6 +209,60 @@ class FirstPublicationTests(unittest.TestCase):
         calls=client.request.call_args_list
         checks=[c.args[2] for c in calls if c.args[0]=='POST']
         self.assertEqual(checks[-1]['conclusion'],'failure')
+
+    def test_accepted_ci_dispatch_rejects_foreign_execution_even_with_matching_title(self):
+        self.recover();blob='c'*40;trusted='d'*40;execution='e'*40
+        self.control.accept_recovered_ci_workflow('R-1','S',self.head,blob,PLAN,'founder')
+        client=MagicMock();client.repository='test/repo';client.root='/repos/test/repo'
+        client.pr.return_value=self.pr;client.info.return_value={'id':1,'default_branch':'main'}
+        client.pages.return_value=[{'filename':'automation/a.py'}];client.request.return_value={'id':8}
+        definitions={'main':trusted,self.head:blob,execution:trusted}
+        client.file.side_effect=lambda path,ref:{'sha':definitions[ref]}
+        run={'id':45,'workflow_id':8,'status':'completed','event':'workflow_dispatch','head_sha':execution,
+             'display_title':'SDLC CI workflow_dispatch pr=71 sha='+self.head,
+             'conclusion':'success','html_url':'https://github.com/test/repo/actions/runs/45',
+             'path':'.github/workflows/infrastructure-ci.yml','head_branch':'main',
+             'repository':{'id':1},'head_repository':{'id':1}}
+        with patch.object(cli,'kv',side_effect=lambda key,*unused: {'pr':71} if key=='ci-queued:'+self.head else None), \
+             patch.object(cli,'require_current_plan',return_value=({},PLAN)):
+            for changes in [{'head_branch':'malicious-branch'}, {'path':'.github/workflows/malicious.yml'},
+                            {'repository':{'id':2}}, {'head_repository':{'id':2}}, {'head_sha':'not-a-sha'}]:
+                with self.subTest(changes=changes),self.assertRaises(ValueError):
+                    cli.record_ci_run(self.p,client,self.control,{**run,**changes})
+            definitions[execution]='f'*40
+            with self.assertRaisesRegex(ValueError,'unapproved workflow definition'):
+                cli.record_ci_run(self.p,client,self.control,run)
+            # A forged/noncanonical title is ignored, never counted as CI.
+            cli.record_ci_run(self.p,client,self.control,{**run,'display_title':'forged title'})
+            with self.control._tx(False) as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM ci_runs').fetchone()[0],0)
+            definitions[execution]=trusted
+            cli.record_ci_run(self.p,client,self.control,{**run,'conclusion':'failure'})
+        with self.control._tx(False) as db:
+            rows=list(db.execute('SELECT passed FROM ci_runs'))
+        self.assertEqual(len(rows),1);self.assertFalse(rows[0]['passed'])
+
+    def test_accepted_ci_pr_execution_must_be_the_candidate_definition(self):
+        self.recover();blob='c'*40
+        self.control.accept_recovered_ci_workflow('R-1','S',self.head,blob,PLAN,'founder')
+        client=MagicMock();client.repository='test/repo';client.root='/repos/test/repo'
+        client.pr.return_value=self.pr;client.info.return_value={'id':1,'default_branch':'main'}
+        client.pages.return_value=[{'filename':'automation/a.py'}];client.request.return_value={'id':8}
+        # The first read supplies the accepted candidate blob; the second is
+        # independently bound to the actual run execution commit.
+        reads={'candidate':0}
+        def file(path,ref):
+            if ref=='main':return {'sha':'d'*40}
+            reads['candidate']+=1
+            return {'sha':blob if reads['candidate']==1 else 'f'*40}
+        client.file.side_effect=file
+        run={'id':46,'workflow_id':8,'status':'completed','event':'pull_request','head_sha':self.head,
+             'pull_requests':[{'number':71}],'conclusion':'success','html_url':'https://github.com/test/repo/actions/runs/46',
+             'path':'.github/workflows/infrastructure-ci.yml','head_branch':'agent/task',
+             'repository':{'id':1},'head_repository':{'id':1}}
+        with patch.object(cli,'kv',return_value=None),patch.object(cli,'require_current_plan',return_value=({},PLAN)):
+            with self.assertRaisesRegex(ValueError,'unapproved workflow definition'):
+                cli.record_ci_run(self.p,client,self.control,run)
+        with self.control._tx(False) as db:self.assertEqual(db.execute('SELECT COUNT(*) FROM ci_runs').fetchone()[0],0)
 
 
 
