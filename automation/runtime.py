@@ -1,8 +1,10 @@
 """Trusted workspace/plan boundaries; model-mutated Git metadata is never executed."""
 import fnmatch
+import base64
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -10,6 +12,8 @@ from pathlib import Path
 from .providers import check_changed_paths, safe_path
 
 SKIP = {".git", ".agent-output", ".sdlc", ".tools", "node_modules", ".venv", "__pycache__", ".next"}
+MAX_SOURCE_BYTES=2_000_000
+MAX_SOURCE_FILES=100
 
 
 def digest(value):
@@ -100,3 +104,86 @@ def publish_copy(workspace, clean_clone, paths):
             if src.is_symlink() or not src.resolve().is_relative_to(source): raise ValueError("Unsafe publication source.")
             dst.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(src,dst)
         elif dst.is_file(): dst.unlink()
+
+
+def credential_free(data,source=None):
+    """Fail closed instead of putting known credentials into retained source."""
+    source=os.environ if source is None else source
+    for name,value in source.items():
+        if value and len(str(value))>=4 and re.search(r'TOKEN|SECRET|PASSWORD|CREDENTIAL|API_KEY|SIGNING_KEY',name,re.I):
+            raw=str(value).encode()
+            if raw in data or base64.b64encode(raw) in data:
+                raise ValueError('Source retention rejected credential material; raw bytes are withheld.')
+    if re.search(rb'(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})',data):
+        raise ValueError('Source retention rejected credential material; raw bytes are withheld.')
+
+
+def source_bundle(workspace,before,after,changed,allowed,source=None):
+    root=Path(workspace).resolve();files={};total=0
+    if len(changed)>MAX_SOURCE_FILES:raise ValueError('Source bundle exceeds the file limit.')
+    if changed!=changes(before,after):raise ValueError('Changed paths do not match the handoff maps.')
+    check_changed_paths(changed,allowed)
+    for name in changed:
+        if safe_path(name)!=name:raise ValueError('Source bundle paths must be canonical.')
+        if name not in after:files[name]=None;continue
+        path=root/name
+        if path.is_symlink() or not path.resolve().is_relative_to(root):raise ValueError('Unsafe source retention path.')
+        with path.open('rb') as stream:data=stream.read(MAX_SOURCE_BYTES-total+1)
+        total+=len(data)
+        if total>MAX_SOURCE_BYTES:raise ValueError('Source bundle exceeds the byte limit.')
+        if digest(data)!=after[name]:raise ValueError('Source bytes changed after the handoff scan.')
+        credential_free(data,source)
+        files[name]=base64.b64encode(data).decode('ascii')
+    bundle={'version':1,'files':files}
+    validate_source_bundle(bundle,before,after,changed,allowed,source)
+    return bundle
+
+
+def validate_source_bundle(bundle,before,after,changed,allowed,source=None):
+    if (not isinstance(bundle,dict) or set(bundle)!={'version','files'} or bundle['version']!=1
+            or not isinstance(bundle['files'],dict) or len(bundle['files'])>MAX_SOURCE_FILES
+            or sorted(bundle['files'])!=changed or changed!=changes(before,after)):
+        raise ValueError('Source bundle identity or changed paths are invalid.')
+    check_changed_paths(changed,allowed)
+    decoded={};total=0
+    for name,encoded in bundle['files'].items():
+        if safe_path(name)!=name:raise ValueError('Source bundle paths must be canonical.')
+        if encoded is None:
+            if name in after or name not in before:raise ValueError('Invalid retained deletion.')
+            decoded[name]=None;continue
+        if not isinstance(encoded,str) or len(encoded)>((MAX_SOURCE_BYTES+2)//3)*4:
+            raise ValueError('Source bundle exceeds the byte limit.')
+        try:data=base64.b64decode(encoded,validate=True)
+        except (ValueError,UnicodeError):raise ValueError('Source bundle has invalid encoded bytes.') from None
+        total+=len(data)
+        if total>MAX_SOURCE_BYTES:raise ValueError('Source bundle exceeds the byte limit.')
+        if name not in after or digest(data)!=after[name]:raise ValueError('Source bundle hash does not match the handoff.')
+        credential_free(data,source);decoded[name]=data
+    return decoded
+
+
+def publish_source_bundle(bundle,clean,before,after,changed,allowed,source=None):
+    decoded=validate_source_bundle(bundle,before,after,changed,allowed,source)
+    if scan_files(clean)!=before:raise ValueError('Clean publisher base bytes do not match the worker baseline.')
+    root=Path(clean).resolve()
+    for name,data in decoded.items():
+        path=root/name
+        if path.is_symlink() or not path.resolve().is_relative_to(root):raise ValueError('Unsafe publication path.')
+        if data is None:
+            if path.is_file():path.unlink()
+        else:
+            path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+    if scan_files(clean)!=after:raise ValueError('Published bytes do not match the exact retained handoff.')
+
+
+def publisher_checkout(root,clean,revision,repository):
+    if not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',revision or ''):
+        raise ValueError('Publisher needs an exact base commit.')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',repository):raise ValueError('Invalid publisher repository.')
+    git(['clone','--no-hardlinks',str(root),str(clean)],root)
+    if not git(['rev-parse','--verify',revision+'^{commit}'],clean,check=False):
+        git(['fetch','https://github.com/'+repository+'.git',revision],clean)
+    if git(['rev-parse','--verify',revision+'^{commit}'],clean)!=revision:
+        raise ValueError('Publisher base object does not match the handoff.')
+    git(['checkout','--detach',revision],clean)
+    if git(['rev-parse','HEAD'],clean)!=revision:raise ValueError('Publisher checkout does not match the exact handoff base.')
