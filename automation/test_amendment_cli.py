@@ -124,6 +124,28 @@ class AmendmentCLI(unittest.TestCase):
         with self.assertRaises(ControlError):self.amend()
         self.assertEqual(self.store,before);self.assertEqual(self.c.snapshot(),snapshot)
 
+    def test_ordinary_import_event_and_scheduled_replay_cannot_replace_started_plan(self):
+        self.c.claim('R1','S2','live-worker')
+        before=self.c.snapshot();events=self.c.events();store=copy.deepcopy(self.store)
+        client=self.api();comment={'id':20,'body':'/sdlc plan plan.json','user':{'login':'founder'}}
+        path=self.root/'event.json';path.write_text(json.dumps({'comment':comment}),encoding='utf-8')
+        with patch.object(cli,'github',return_value=client),patch.object(cli,'principal',return_value='founder'),patch.object(cli,'ledger',return_value=self.c):
+            with self.assertRaisesRegex(ValueError,'Started releases require amend-plan'):
+                cli.event(self.p,Namespace(event_name='issue_comment',event_path=str(path)))
+        client.pages.side_effect=lambda url,**kwargs:[comment] if url.endswith('/issues/comments') else []
+        self.reconcile(client)
+        self.assertEqual(self.c.snapshot(),before);self.assertEqual(self.c.events(),events);self.assertEqual(self.store,store)
+        client.dispatch.assert_not_called();client.pr.assert_not_called()
+
+    def test_identical_started_import_replay_preserves_active_lease_and_original_metadata(self):
+        self.amend();actual=self.store['plan:R1']['hash'];self.c.approve_plan('R1',actual,'founder')
+        self.c.claim('R1','S2','live-worker')
+        self.store['plan:R1']['pr_url']='fixture://original-provenance'
+        before=self.c.snapshot();events=self.c.events();store=copy.deepcopy(self.store)
+        result=cli.adopt_plan(self.p,self.c,self.path,'founder')
+        self.assertEqual(result['plan_hash'],actual)
+        self.assertEqual(self.c.snapshot(),before);self.assertEqual(self.c.events(),events);self.assertEqual(self.store,store)
+
     def test_reconcile_drift_does_not_dispatch_merge_or_schedule_qa(self):
         client=self.api();events=self.c.events();before=copy.deepcopy(self.store)
         self.reconcile(client)
