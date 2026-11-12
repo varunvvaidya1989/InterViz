@@ -106,6 +106,11 @@ def approval_options(client, ledger=None, policy=None):
     revision=None
     for release in ledger['releases']:
         manifest=ledger['kv'].get('plan:'+release['id']) or {}
+        # Amendment manifests already contain their document but do not pin a
+        # planning-PR revision. Bind their approval card (and later confirmation)
+        # to the current trusted controller revision without refetching the file.
+        if manifest.get('hash') and not manifest.get('revision') and revision is None:
+            revision=client.request('GET',client.root+'/commits/main')['sha']
         if manifest.get('path') and not manifest.get('document'):
             if revision is None:revision=client.request('GET',client.root+'/commits/main')['sha']
             document=client.file(manifest['path'],revision)

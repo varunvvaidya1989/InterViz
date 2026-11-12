@@ -1,21 +1,85 @@
 """Approval transport: real loopback HTTP with no remote mutations."""
 import copy
+import base64
 import json
+import tempfile
 import threading
 import time
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from unittest.mock import MagicMock, patch
 
 from automation.approvals import intent_id
-from founder_dashboard.server import ApprovalRequests, make_server
+from automation.control import Control
+from automation.github import sign_snapshot
+from founder_dashboard.server import ApprovalRequests, approval_options, make_server
 
 INTENT={'kind':'plan','release_id':'R-1','expected_hash':'a'*64,'revision':'b'*40}
 CARD={**INTENT,'id':intent_id(INTENT)}
 OPTIONS={'can_approve':True,'cards':[CARD],'confirmed_ids':[],'runs':[]}
+
+
+class AmendmentApprovalOptionsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.control=Control(Path(self.temp.name)/'state.db',{'founder'})
+        self.control.create_release('R-1','Amended release','lead')
+        self.control.upsert_story('R-1','S1','Original outcome',
+                {'allowed_paths':['automation/example.py'],'acceptance':['Works']},[],'lead')
+        self.control.submit_plan('R-1',INTENT['expected_hash'],'lead')
+        # OPS-102 publishes document+hash+path, without a planning PR revision.
+        self.manifest={'document':{'user_stories':[{'title':'Original outcome','acceptance':['Works']}]},
+                       'hash':INTENT['expected_hash'],'path':'docs/releases/R-1/plan.json'}
+        with self.control._tx() as db:
+            db.execute('CREATE TABLE runtime_kv(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
+            db.execute('INSERT INTO runtime_kv VALUES(?,?)',('plan:R-1',json.dumps(self.manifest)))
+        self.policy={'founders':{'usernames':['founder']},'authority':{'production_release_enabled':False}}
+        self.revision=INTENT['revision']
+        self.client=MagicMock();self.client.root='/repos/test/repo';self.client.repository='test/repo'
+        def request(method,path):
+            if path=='/user':return {'login':'founder'}
+            if path.endswith('/actions/workflows/founder-approval.yml'):return {'state':'active'}
+            if path.endswith('/commits/main'):return {'sha':self.revision}
+            if path.endswith('/actions/workflows/founder-approval.yml/runs?per_page=20'):return {'workflow_runs':[]}
+            raise AssertionError('Unexpected fixture API request: '+path)
+        def file(path,ref):
+            if path=='controller/state.json':
+                value=sign_snapshot(self.control.export_database(),'fixture-signing-key-'*3)
+            elif path=='automation/policy.json':value=self.policy
+            else:raise AssertionError('Embedded amendment documents must not be refetched.')
+            return {'content':base64.b64encode(json.dumps(value).encode()).decode()}
+        self.client.request.side_effect=request;self.client.file.side_effect=file
+
+    def test_embedded_amendment_document_displays_submits_and_confirms_without_comments(self):
+        options=approval_options(self.client)
+        self.assertTrue(options['can_approve'])
+        self.assertEqual(len(options['cards']),1)
+        card=options['cards'][0]
+        self.assertEqual(card['revision'],self.revision)
+        self.assertEqual(card['stories'][0]['title'],'Original outcome')
+        intent={key:card[key] for key in ('kind','release_id','expected_hash','revision')}
+        requests=ApprovalRequests()
+        self.assertEqual(requests.submit(self.client,intent)['state'],'requested')
+        self.client.dispatch.assert_called_once_with('founder-approval.yml',{
+            'kind':'plan','release-id':'R-1','expected-hash':INTENT['expected_hash'],'revision':self.revision})
+        self.control.approve_plan('R-1',INTENT['expected_hash'],'founder')
+        confirmed=approval_options(self.client)
+        self.assertEqual(confirmed['cards'],[])
+        self.assertIn(card['id'],confirmed['confirmed_ids'])
+        self.assertEqual(requests.snapshot({'approvals':confirmed})[card['id']]['state'],'confirmed')
+        self.client.comment.assert_not_called()
+
+    def test_main_revision_change_rejects_previously_displayed_amendment_intent(self):
+        card=approval_options(self.client)['cards'][0]
+        intent={key:card[key] for key in ('kind','release_id','expected_hash','revision')}
+        self.revision='c'*40
+        with self.assertRaisesRegex(ValueError,'changed'):
+            ApprovalRequests().submit(self.client,intent)
+        self.client.dispatch.assert_not_called()
 
 
 class ApprovalTransportTests(unittest.TestCase):
