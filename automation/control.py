@@ -395,6 +395,88 @@ class Control:
             self._event(db, release_id, "pr_head_associated", actor, {"kind": kind, "item_id": item_id, "head_sha": head_sha, "author_id": author_id, "pr_url": pr_url})
             return self._decoded(self._item(db, release_id, item_id, kind))
 
+    def record_worker_failure(self, release_id, item_id, worker_id, lease_id, evidence, actor, kind='story'):
+        """Release only this failed worker's lease; do not refund its spent attempt."""
+        _identity(worker_id);_identity(lease_id);_identity(actor);raw=_evidence(evidence)
+        _require(actor==worker_id,'identity_mismatch','Failure evidence must identify its worker execution.')
+        with self._tx() as db:
+            self._release(db,release_id,True)
+            item=self._item(db,release_id,item_id,kind)
+            _require(item['status']=='IN_PROGRESS' and item['lease_id']==lease_id and item['lease_worker']==worker_id,
+                     'invalid_lease','Failure cannot release another or a newer worker lease.')
+            db.execute("UPDATE items SET status='OPEN',lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'worker_failed',actor,{'kind':kind,'item_id':item_id,'worker_id':worker_id,
+                        'lease_id':lease_id,'attempts':item['attempts'],'epoch':item['epoch'],'evidence':json.loads(raw)})
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
+    def adopt_lead_submission(self, release_id, item_id, head_sha, pr_url, author_id,
+                              plan_hash, contract, evidence, actor, kind='story'):
+        """One founder-authorized lead correction of an exhausted unsubmitted task.
+
+        The trusted hosted caller verifies PR identity, scope and concrete SHA.
+        No attempt is reset and no historical evidence is accepted for this new
+        epoch. Subsequent revisions must follow ordinary submission/review rules.
+        """
+        self._founder(actor);self._founder(author_id);_sha(head_sha);_sha(plan_hash,plan=True)
+        _require(actor==author_id,'identity_mismatch','The authenticated founder must own the lead PR.')
+        _require(isinstance(contract,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{2,199}',contract),
+                 'lead_contract_required','Provide an explicit bounded lead-rework contract.')
+        _require(isinstance(pr_url,str) and re.fullmatch(r'https://github\.com/[^/\s]+/[^/\s]+/pull/[1-9][0-9]*',pr_url),
+                 'invalid_pr','Lead submission needs a canonical GitHub PR URL.')
+        raw=_evidence(evidence)
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            _require(release['plan_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash'],
+                     'stale_plan','Lead rework must retain the exact approved plan and original task contracts.')
+            item=self._item(db,release_id,item_id,kind)
+            _require(kind=='story' and json.loads(item['scope']).get('kind')=='infrastructure',
+                     'infrastructure_only','This lead correction is limited to an approved infrastructure story.')
+            previous=[]
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='lead_submission_adopted' ORDER BY seq",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id:previous.append(value)
+            if previous:
+                old=previous[-1]
+                same=(old['head_sha']==head_sha and old['pr_url']==pr_url and old['author_id']==author_id
+                      and old['plan_hash']==plan_hash and old['contract']==contract)
+                _require(same and item['status']=='SUBMITTED' and item['head_sha']==head_sha and item['pr_url']==pr_url
+                         and item['epoch']==old['submitted_epoch'] and not item['lease_id'],
+                         'lead_rework_already_adopted','Only an unchanged submitted adoption may be replayed.')
+                return self._decoded(item)
+            _require(item['status'] in {'OPEN','IN_PROGRESS'} and not item['head_sha'] and not item['pr_url'],
+                     'prior_submission','Lead adoption cannot replace an existing or previously submitted candidate.')
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type IN ('pr_head_associated','submission_recovered')",(release_id,)):
+                value=json.loads(row['payload'])
+                _require(not (value.get('kind')==kind and value.get('item_id')==item_id),
+                         'prior_submission','Previously submitted work must use ordinary review/recovery rules.')
+            _require(item['attempts']==item['max_attempts'] and item['attempts']>0,
+                     'attempts_not_exhausted','Use normal bounded implementation while attempts remain.')
+            _require(not item['lease_until'] or item['lease_until']<=self.clock(),
+                     'lease_active','A lead correction cannot interrupt an active worker.')
+            for dep in json.loads(item['depends_on']):
+                _require(self._item(db,release_id,dep)['status'] in {'INTEGRATED','DONE'},
+                         'dependency_not_ready','Lead rework requires accepted, integrated dependencies.')
+            paths=json.loads(item['scope'])['allowed_paths']
+            for lease in db.execute('SELECT scope FROM items WHERE lease_until>?',(self.clock(),)):
+                _require(not _overlap(paths,json.loads(lease['scope'])['allowed_paths']),
+                         'scope_busy','Another live worker owns overlapping paths.')
+            authors=set(json.loads(item['author_ids'])+[author_id])
+            authors.update(value for value in (item['developer_id'],item['lease_worker']) if value)
+            for row in db.execute("SELECT actor,payload FROM events WHERE release_id=? AND type='item_claimed'",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id:authors.add(row['actor'])
+            authors=sorted(authors)
+            db.execute("UPDATE items SET status='SUBMITTED',head_sha=?,pr_url=?,developer_id=?,author_ids=?,integration_sha=NULL,epoch=epoch+1,lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (head_sha,pr_url,author_id,_json(authors),self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'lead_submission_adopted',actor,{'kind':kind,'item_id':item_id,
+                        'head_sha':head_sha,'pr_url':pr_url,'author_id':author_id,'plan_hash':plan_hash,'contract':contract,
+                        'attempts':item['attempts'],'previous_epoch':item['epoch'],'submitted_epoch':item['epoch']+1,
+                        'scope_hash':release['plan_scope_hash'],'evidence':json.loads(raw)})
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
     def recover_submission(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
                            plan_hash, evidence, actor, kind="story", live_worker=False):
         """Restore a proven unchanged prior submission after verified worker completion.
