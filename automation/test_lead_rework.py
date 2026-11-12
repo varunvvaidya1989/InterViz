@@ -17,7 +17,8 @@ PLAN='a'*64
 HEAD='b'*40
 PR='https://github.com/test/repo/pull/60'
 CONTRACT='OPS102-LEAD-v1'
-SCOPE={'allowed_paths':['automation/cli.py'],'acceptance':['Preserve exact plan authority.'],'role':'devops','kind':'infrastructure'}
+SCOPE={'allowed_paths':['automation/cli.py','automation/test_amendment_cli.py','automation/README.md'],
+       'acceptance':['Preserve exact plan authority.'],'role':'devops','kind':'infrastructure'}
 
 
 class LeadReworkTests(unittest.TestCase):
@@ -191,6 +192,22 @@ class HostedAdoptionTests(unittest.TestCase):
         self.assertIsNone(values['ci-queued:'+HEAD])
         self.assertIsNone(values['reviewed:R-1:story:S:'+HEAD])
         self.assertTrue(any(k.startswith('lead-adoption-cache-done:') for k in values))
+
+    def test_manifest_path_order_uses_ledger_normalization_without_scope_expansion(self):
+        _,client,args,manifest,_,_=self.api_fixture()
+        paths=manifest['document']['user_stories'][0]['allowed_paths']
+        stored=next(i for i in self.control.snapshot('R-1')['items'] if i['id']=='S')['scope']['allowed_paths']
+        self.assertNotEqual(paths,stored)
+        before=self.tables()
+        for changed in (paths+['automation/policy.json'],paths[:-1]):
+            candidate=copy.deepcopy(manifest);candidate['document']['user_stories'][0]['allowed_paths']=changed
+            with self.assertRaisesRegex(ValueError,'original approved task contract'):
+                self.execute(client,args,candidate)
+            self.assertEqual(self.tables(),before)
+        result,_=self.execute(client,args,manifest)
+        self.assertEqual(result['status'],'SUBMITTED');self.assertEqual(result['result']['attempts'],2)
+        self.assertEqual(result['result']['scope']['allowed_paths'],stored)
+        self.assertTrue(self.control.verify_audit()['valid'])
 
     def test_nonfounder_stale_revision_wrong_repository_author_base_and_files_rejected(self):
         cases=[('head',{'sha':'f'*40,'repo':{'full_name':'test/repo'}}),
