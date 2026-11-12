@@ -232,3 +232,51 @@ class ApplicationCI(unittest.TestCase):
             cli.record_ci_run(self.p,self.api,self.control,{})
         request.assert_not_called();pr.assert_not_called()
         self.assertEqual(self.control.snapshot(),before);self.assertEqual(self.control.events(),events)
+
+    def test_unavailable_pr_or_scope_facts_revoke_prior_green_without_leaking_details(self):
+        from automation.github import GitHubError
+        for mode in ('pr','scope','invalid-scope','leaf-pr'):
+            with self.subTest(mode=mode):
+                self.record();self.ready()
+                with patch.object(cli,'require_current_plan',return_value=({},'a'*64)), \
+                     patch.object(cli,'kv',return_value=None):
+                    if mode in ('pr','leaf-pr'):
+                        with patch.object(self.api,'pr',side_effect=GitHubError('private fixture detail')):
+                            if mode=='leaf-pr':
+                                from automation import ci
+                                ci.reconcile_item(self.p,self.api,self.control,self.control.snapshot()['items'][0],lambda head:None)
+                            else:cli.record_ci_run(self.p,self.api,self.control,{})
+                    else:
+                        error=GitHubError('private fixture detail') if mode=='scope' else ValueError('private fixture detail')
+                        with patch.object(cli,'pr_files',side_effect=error):
+                            cli.record_ci_run(self.p,self.api,self.control,{})
+                self.blocked()
+                with self.control._tx(False) as db:
+                    row=db.execute('SELECT evidence FROM ci_runs ORDER BY seq DESC LIMIT 1').fetchone()
+                    self.assertNotIn('private fixture detail',row['evidence'])
+
+    def test_earlier_workflow_failed_rerun_during_later_workflow_jobs_revokes_green(self):
+        self.record();self.ready();original=self.api.pages;changed=False
+        def pages(path,key=None):
+            nonlocal changed
+            if '/runs/2/attempts/1/jobs' in path and not changed:
+                changed=True
+                self.api.runs['infrastructure-ci.yml'][0].update(
+                    run_attempt=2,conclusion='failure',updated_at='2026-11-12T10:00:05Z')
+            return original(path,key)
+        with patch.object(self.api,'pages',side_effect=pages):self.record()
+        self.assertTrue(changed);self.blocked()
+        with self.control._tx(False) as db:
+            import json
+            evidence=json.loads(db.execute('SELECT evidence FROM ci_runs ORDER BY seq DESC LIMIT 1').fetchone()['evidence'])
+        self.assertEqual(evidence['workflows'][0]['result'],'execution_changed_after_collection')
+        self.assertEqual(evidence['workflows'][0]['current_executions'][0]['conclusion'],'failure')
+
+    def test_head_race_after_scope_verification_never_associates_unverified_source(self):
+        self.record();self.ready();before=self.control.snapshot()['items'][0]
+        first=copy.deepcopy(self.api.pull);first['head']['sha']='d'*40
+        second=copy.deepcopy(first);second['head']['sha']='e'*40
+        with patch.object(self.api,'pr',side_effect=[first,second]):self.record()
+        self.blocked();item=self.control.snapshot()['items'][0]
+        self.assertEqual((item['head_sha'],item['epoch'],item['author_ids']),
+                         (before['head_sha'],before['epoch'],before['author_ids']))

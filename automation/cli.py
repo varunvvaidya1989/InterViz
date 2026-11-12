@@ -365,9 +365,15 @@ def record_ci_run(p,client,control,run):
         for item in snapshot['items']:
             if (item.get('head_sha') and item.get('pr_url') and item['status'] in {'SUBMITTED','INTEGRATED','DONE'}
                     and item['release_id'] in approved):
-                pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
-                pr_files(client,pr,item,p)
-                ci.reconcile_item(p,client,control,item,lambda head:kv('ci-queued:'+head))
+                try:
+                    pr=client.pr(int(item['pr_url'].rsplit('/',1)[1]))
+                    pr_files(client,pr,item,p)
+                except (GitHubError,KeyError,TypeError,ValueError):
+                    control.record_ci(item['release_id'],item['id'],item['head_sha'],False,
+                                      {'head':item['head_sha'],'result':'unavailable_or_invalid_pr_scope_facts'},
+                                      'github:ci-aggregate',kind=item['kind'])
+                    continue
+                ci.reconcile_item(p,client,control,item,lambda head:kv('ci-queued:'+head),verified_pr=pr)
         return
     expected=client.request("GET",client.root+"/actions/workflows/infrastructure-ci.yml")
     if run.get("workflow_id")!=expected["id"] or run.get("status")!="completed":return
