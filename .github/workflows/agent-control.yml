@@ -15,7 +15,7 @@ on:
       action:
         description: Trusted controller action; reconcile schedules ready ledger tasks
         type: choice
-        options: [event, reconcile, worker, provider-check]
+        options: [event, reconcile, worker, provider-check, adopt-submission]
         default: reconcile
         required: true
       role:
@@ -28,6 +28,15 @@ on:
         type: string
       revision:
         description: Exact 40-character target commit; required by worker policy
+        type: string
+      pull-request:
+        description: Concrete founder-authored lead-rework PR to submit for fresh review
+        type: string
+      plan-hash:
+        description: Existing approved plan hash; adoption cannot approve a changed plan
+        type: string
+      lead-contract:
+        description: Explicit bounded lead-rework contract recorded in the audit
         type: string
 
 permissions: {}
@@ -57,6 +66,9 @@ jobs:
       SDLC_ROLE: ${{ inputs.role || 'lead' }}
       SDLC_TASK_ID: ${{ inputs.task-id || '' }}
       SDLC_TARGET_REVISION: ${{ inputs.revision || '' }}
+      SDLC_PULL_REQUEST: ${{ inputs.pull-request || '' }}
+      SDLC_PLAN_HASH: ${{ inputs.plan-hash || '' }}
+      SDLC_LEAD_CONTRACT: ${{ inputs.lead-contract || '' }}
       SDLC_OUTPUT_DIR: .sdlc/output
     steps:
       - name: Check out trusted default-branch controller only
@@ -80,6 +92,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python -m automation.cli event --event-name "$GITHUB_EVENT_NAME" --event-path "$GITHUB_EVENT_PATH"
+      - name: Submit founder-approved bounded lead rework for fresh review
+        if: env.SDLC_ACTION == 'adopt-submission'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python -m automation.cli adopt-submission
+          --task-id "$SDLC_TASK_ID"
+          --revision "$SDLC_TARGET_REVISION"
+          --pull-request "$SDLC_PULL_REQUEST"
+          --plan-hash "$SDLC_PLAN_HASH"
+          --lead-contract "$SDLC_LEAD_CONTRACT"
       - name: Build trusted worker execution image
         if: env.SDLC_ACTION == 'worker'
         run: docker build -f infra/Dockerfile.agent -t systemslabs-agent:local .

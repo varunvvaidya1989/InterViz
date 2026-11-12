@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .control import Control, ControlError
 from .github import GitHub, GitHubError, SnapshotStore
-from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT
+from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT, sanitized_failure_report
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
 from .recovery import source_handoff, unchanged_result, verified_pass_report
 
@@ -143,6 +143,64 @@ def revise_plan(control,release_id,feedback,actor):
     kv("plan:"+release_id,None,True)
     kv("plan-feedback:"+release_id,feedback,True)
     return result
+
+
+def adopt_submission(p,args):
+    """Founder explicitly submits bounded manual lead rework, never approves it."""
+    if not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',args.revision or ''):
+        raise ValueError('Adoption requires an exact PR revision.')
+    if not re.fullmatch(r'[a-f0-9]{64}',args.plan_hash or ''):
+        raise ValueError('Adoption requires the existing exact approved plan hash.')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{2,199}',args.lead_contract or ''):
+        raise ValueError('Adoption requires an explicit bounded lead-rework contract.')
+    client=github(p);actor=principal(p,client)
+    if actor not in p['founders']['usernames']:
+        raise ValueError('Only the configured founder may adopt a lead submission.')
+    run=client.request('GET',client.root+'/actions/runs/'+os.environ['GITHUB_RUN_ID'])
+    branch=p['repository']['default_branch']
+    if (run.get('event')!='workflow_dispatch' or run.get('head_branch')!=branch
+            or run.get('path')!='.github/workflows/agent-control.yml'):
+        raise ValueError('Lead adoption requires the trusted default-branch controller workflow.')
+    control=ledger(p);release_id,kind,item_id,item=find_item(control,args.task_id)
+    manifest,actual=current_plan(p,release_id)
+    release=control.snapshot(release_id)['releases'][0]
+    if actual!=args.plan_hash or release.get('plan_approved_hash')!=actual:
+        raise ValueError('The existing plan approval is missing or stale.')
+    if kind!='story':raise ValueError('Lead adoption is limited to an approved infrastructure story.')
+    document=manifest.get('document')
+    if document is None:document,_=plan_document(ROOT/manifest['path'],p,ROOT)
+    stories=[s for s in document['user_stories'] if s['id']==item_id]
+    if len(stories)!=1:raise ValueError('The lead task is absent or ambiguous in the approved plan.')
+    story=stories[0]
+    expected={'allowed_paths':story['allowed_paths'],'acceptance':story['acceptance'],
+              'role':story.get('role','coding'),'kind':story.get('kind','application')}
+    if (item['title']!=story['title'] or digest(item['scope'])!=digest(expected)
+            or sorted(item['depends_on'])!=sorted(story.get('depends_on',[]))):
+        raise ValueError('Lead rework cannot change the original approved task contract.')
+    validate_assignment(expected['allowed_paths'],p,infrastructure=expected['kind']=='infrastructure')
+    pr=client.pr(args.pull_request)
+    canonical='https://github.com/'+client.repository+'/pull/'+str(args.pull_request)
+    def matching(value):
+        return (value.get('number')==args.pull_request and value.get('html_url')==canonical
+                and value.get('state')=='open' and not value.get('draft')
+                and value.get('user',{}).get('login')==actor
+                and value.get('head',{}).get('sha')==args.revision
+                and value.get('head',{}).get('repo',{}).get('full_name')==client.repository
+                and value.get('base',{}).get('ref')==branch
+                and value.get('base',{}).get('repo',{}).get('full_name')==client.repository)
+    if not matching(pr):raise ValueError('The concrete founder PR, repository, base or exact head does not match.')
+    files,protected=pr_files(client,pr,item,p)
+    if not files:raise ValueError('A lead submission must contain a bounded implementation change.')
+    if not matching(client.pr(args.pull_request)):
+        raise ValueError('The lead PR changed while its complete scope was being verified.')
+    changes=[{k:f[k] for k in ('filename','previous_filename','status') if k in f} for f in files]
+    result=control.adopt_lead_submission(release_id,item_id,args.revision,canonical,actor,actual,args.lead_contract,
+            {'execution':run['id'],'workflow':run['path'],'pull_request':pr['number'],
+             'base':branch,'changed_files':changes,'files_sha256':digest(changes)},actor,kind=kind)
+    kv('protected:'+canonical,protected,True)
+    finish_recovery_cache(control)
+    return output('lead-submission.json',{'task_id':args.task_id,'revision':args.revision,
+                  'lead_contract':args.lead_contract,'status':'SUBMITTED','result':result})
 
 
 def pr_files(client,pr,item,p):
@@ -278,8 +336,23 @@ def worker(p,args):
     if role=="review":
         # Diff was fetched/authenticated by the controller, not supplied by model.
         diff=queued.get("diff","")
-    report=DockerAgent().run(home,role,p["providers"]["selected"],build_prompt(ROOT,role,assignment,diff),model=p["providers"].get("model"),timeout=int(p["limits"]["max_task_minutes"]*60),budget_usd=p["limits"]["max_cost"])
-    if role not in {"review","qa"} and report["verdict"]!="SUBMITTED":raise ValueError("Worker reported blocked/unsuccessful work; lead rework is required before a PR.")
+    def retain_failure(value):
+        failure={'role':role,'reference':args.task_id,'worker_id':worker_id,'revision':args.revision,
+                 'report':sanitized_failure_report(value),'lease_id':claim.get('lease_id') if claim else None}
+        output('worker-failure.json',failure)
+        if claim:
+            control.record_worker_failure(release_id,item_id,worker_id,claim['lease_id'],
+                    {'revision':args.revision,'report':failure['report']},worker_id,kind=kind)
+    try:
+        report=DockerAgent().run(home,role,p["providers"]["selected"],build_prompt(ROOT,role,assignment,diff),model=p["providers"].get("model"),timeout=int(p["limits"]["max_task_minutes"]*60),budget_usd=p["limits"]["max_cost"])
+    except Exception:
+        retain_failure({'summary':'Worker execution failed before a valid structured handoff was returned.',
+                        'verdict':'BLOCKED','findings':[],'evidence':[],
+                        'limitations':['Raw provider diagnostics are withheld; no submission was published.']})
+        raise ValueError('Worker execution failed; sanitized failure evidence was retained.') from None
+    if role not in {"review","qa"} and report["verdict"]!="SUBMITTED":
+        retain_failure(report)
+        raise ValueError("Worker reported blocked/unsuccessful work; failure evidence retained and lead rework is required before a PR.")
     after=scan_files(home);changed=changes(before,after)
     if role in {"review","qa"} and changed:raise ValueError("Read-only review/QA changed workspace files.")
     if role not in {"review","qa"}:check_changed_paths(changed,item["scope"]["allowed_paths"])
@@ -332,10 +405,11 @@ def finish_recovery_cache(control):
     # old scheduling receipts blocking the new evidence epoch forever.
     for release in control.snapshot()['releases']:
         for event in control.events(release['id']):
-            if event['type'] not in {'submission_recovered','review_contract_corrected','review_environment_blocked'}:continue
+            if event['type'] not in {'submission_recovered','review_contract_corrected','review_environment_blocked','lead_submission_adopted'}:continue
             value=event['payload']
             if event['type']=='submission_recovered':marker='recovery-cache-done:'+value['lease_id']
             elif event['type']=='review_environment_blocked':marker='review-environment-cache-done:'+str(event['seq'])
+            elif event['type']=='lead_submission_adopted':marker='lead-adoption-cache-done:'+str(event['seq'])
             else:marker='review-contract-cache-done:'+release['id']+':'+value['kind']+':'+value['item_id']+':'+value['contract']
             if kv(marker):continue
             item=next((i for i in control.snapshot(release['id'])['items']
@@ -647,6 +721,7 @@ def parser():
     for name in ("event","reconcile"):
         x=sub.add_parser(name);x.add_argument("--event-path",default=os.environ.get("GITHUB_EVENT_PATH",""));x.add_argument("--event-name",default=os.environ.get("GITHUB_EVENT_NAME",""))
     w=sub.add_parser("worker");w.add_argument("--role",required=True);w.add_argument("--task-id",required=True);w.add_argument("--revision",required=True);w.add_argument("--event-path")
+    a=sub.add_parser('adopt-submission');a.add_argument('--task-id',required=True);a.add_argument('--revision',required=True);a.add_argument('--pull-request',type=int,required=True);a.add_argument('--plan-hash',required=True);a.add_argument('--lead-contract',required=True)
     r=sub.add_parser("release");r.add_argument("--phase",choices=["candidate","publish"],required=True);r.add_argument("--candidate-id",required=True);r.add_argument("--revision",required=True)
     return p
 
@@ -662,6 +737,7 @@ def main(argv=None):
             result=getattr(store,args.action)()
         elif args.command=="event":result=event(p,args)
         elif args.command=="worker":result=worker(p,args)
+        elif args.command=='adopt-submission':result=adopt_submission(p,args)
         elif args.command=="reconcile":result=reconcile(p,args)
         else:result=release(p,args)
         print(json.dumps(result,indent=2));return 0
