@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .control import Control, ControlError
+from .control import Control, ControlError, _scope
 from .github import GitHub, GitHubError, SnapshotStore
 from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT, sanitized_failure_report
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
@@ -135,6 +135,70 @@ def current_plan(p,release_id):
         actual=digest({"plan":manifest["document"],"specification_sha256":digest((ROOT/"planning/Systems Labs Product Specification.md").read_bytes()),"policy_sha256":digest(p)})
     else:_,actual=plan_document(ROOT/manifest["path"],p,ROOT)
     return manifest,actual
+
+
+def require_current_plan(p,control,release_id):
+    manifest,actual=current_plan(p,release_id)
+    release=control.snapshot(release_id)['releases'][0]
+    # Older in-process callers may supply only the approved hash; real ledger
+    # snapshots always include plan_hash, including an explicit null when absent.
+    if (not actual or manifest.get('hash',actual)!=actual
+            or release.get('plan_hash',actual)!=actual or release.get('plan_approved_hash')!=actual):
+        raise ValueError('Plan approval is missing or stale for the submitted current plan/spec/policy.')
+    return manifest,actual
+
+
+def amendment_document(p,path):
+    path=Path(path).resolve()
+    plan,plan_hash=plan_document(path,p,ROOT)
+    if os.environ.get('GITHUB_ACTIONS')=='true':
+        # Only the trusted controller checkout supplies source bytes. Worker
+        # workspaces, untracked manifests and locally modified policy cannot
+        # supply a new canonical amendment in a hosted execution.
+        def committed(name):
+            env={k:os.environ[k] for k in ('PATH','SYSTEMROOT','WINDIR','TEMP','TMP') if k in os.environ}
+            env.update(GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL=os.devnull,GIT_CONFIG_COUNT='0',GIT_TERMINAL_PROMPT='0')
+            run=subprocess.run(['git','-c','core.hooksPath='+os.devnull,'-c','core.fsmonitor=false',
+                                'show','HEAD:'+name],cwd=ROOT,env=env,capture_output=True,timeout=30,check=False)
+            if run.returncode:raise ValueError('Amendment inputs must exist in the trusted committed controller revision.')
+            return run.stdout
+        committed_plan=json.loads(committed(path.relative_to(ROOT.resolve()).as_posix()))
+        committed_policy=json.loads(committed('automation/policy.json'))
+        specification=committed('planning/Systems Labs Product Specification.md')
+        if committed_plan!=plan or committed_policy!=p or specification!=(ROOT/'planning/Systems Labs Product Specification.md').read_bytes():
+            raise ValueError('Amendment inputs differ from the trusted committed controller revision.')
+        plan_hash=digest({'plan':committed_plan,'specification_sha256':digest(specification),'policy_sha256':digest(committed_policy)})
+    return plan,plan_hash
+
+
+def amend_plan(p,control,path,expected_old_hash,authenticated_actor):
+    """Ledger-first canonical publication; the same authenticated command recovers a crash.
+
+    The immutable plan_amended event makes the domain transition idempotent.
+    Until the following manifest write succeeds, require_current_plan rejects
+    every dispatch/acceptance path. The unconsumed authenticated command is then
+    replayed by scheduled reconciliation without resetting any work receipts.
+    """
+    control._founder(authenticated_actor)
+    plan,new_hash=amendment_document(p,path);release_id=plan['release_id']
+    items={i['id']:i for i in control.snapshot(release_id)['items'] if i['kind']=='story'}
+    stories={s['id']:s for s in plan['user_stories']}
+    if items.keys()!=stories.keys():raise ValueError('Amendment must preserve every original story contract and dependency.')
+    for story_id,story in stories.items():
+        item=items[story_id]
+        # Preserve optional scope fields exactly: a legacy contract need not
+        # have explicit role/kind defaults. No scope upserts occur here.
+        candidate={key:story[key] for key in item['scope'] if key in story}
+        for key in ('allowed_paths','acceptance','role','kind'):
+            if key in story:candidate[key]=story[key]
+        if (story['title']!=item['title'] or _scope(candidate)!=item['scope']
+                or sorted(set(story.get('depends_on',[])))!=item['depends_on']):
+            raise ValueError('Amendment cannot change original story contracts or dependencies.')
+        validate_assignment(story['allowed_paths'],p,infrastructure=story.get('kind')=='infrastructure')
+    result=control.amend_plan(release_id,expected_old_hash,new_hash,authenticated_actor)
+    kv('plan:'+release_id,{'document':plan,'hash':new_hash,
+                         'path':str(Path(path).resolve().relative_to(ROOT.resolve()))},True)
+    return result
 
 
 def revise_plan(control,release_id,feedback,actor):
@@ -270,6 +334,11 @@ def event(p,args):
         words=text.strip().split();command=words[1]
         if actor not in p["founders"]["usernames"]:raise ValueError("Only configured founders issue release-plan/release approval commands.")
         if command=="plan" and len(words)==3:result=adopt_plan(p,control,ROOT/words[2],actor)
+        elif command=="amend-plan" and len(words)==5:
+            plan_path=ROOT/words[3]
+            document,_=amendment_document(p,plan_path)
+            if document['release_id']!=words[2]:raise ValueError('Amendment release does not match the command.')
+            result=amend_plan(p,control,plan_path,words[4],actor)
         elif command=="revise-plan" and len(words)>=4:result=revise_plan(control,words[2]," ".join(words[3:]),actor)
         elif command=="approve-plan" and len(words)==4:
             manifest,actual=current_plan(p,words[2])
@@ -279,7 +348,7 @@ def event(p,args):
             candidate=kv("candidate:"+words[2])
             if not candidate or words[4]!=digest(candidate) or candidate["commit_sha"]!=words[3]:raise ValueError("Candidate artifact/evidence hash does not match founder approval.")
             result=control.approve_release(words[2],words[3],actor);kv("release-manifest-approval:"+words[2],{"manifest_hash":words[4],"actor":actor},True)
-        else:raise ValueError("Commands: /sdlc plan PATH; /sdlc revise-plan RELEASE FEEDBACK; /sdlc approve-plan RELEASE HASH; /sdlc approve-release RELEASE SHA MANIFEST_HASH")
+        else:raise ValueError("Commands: /sdlc plan PATH; /sdlc revise-plan RELEASE FEEDBACK; /sdlc amend-plan RELEASE PATH EXPECTED_OLD_HASH; /sdlc approve-plan RELEASE HASH; /sdlc approve-release RELEASE SHA MANIFEST_HASH")
         kv(receipt,{"processed":True,"actor":actor},True);return result
     if name=="issues" and "sdlc:plan" in [l["name"] for l in data.get("issue",{}).get("labels",[])]:
         issue=data["issue"];release_id="R-"+str(issue["number"])
@@ -302,7 +371,7 @@ def worker(p,args):
         manifest=None;current_hash=None
     else:
         release_id,kind,item_id,item=find_item(control,args.task_id)
-        manifest,current_hash=current_plan(p,release_id)
+        manifest,current_hash=require_current_plan(p,control,release_id)
     release=control.snapshot(release_id)["releases"][0]
     if role=="review" and (item.get("head_sha")!=args.revision or item.get("status")!="SUBMITTED"):raise ValueError("Review target is no longer the submitted current head.")
     if role=="qa" and (release.get("qa_sha")!=args.revision or release.get("state")!="QA"):raise ValueError("QA target is no longer the active QA candidate.")
@@ -568,7 +637,15 @@ def publish_result(p,client,control):
 
 
 def reconcile(p,args):
-    client=github(p);principal(p,client);control=ledger(p);processed=publish_result(p,client,control)
+    client=github(p);principal(p,client);control=ledger(p)
+    # Gate the authenticated entry point before the low-level publisher can
+    # consume any worker handoff, including review, integration and QA results.
+    handoff=OUT/'worker-result.json'
+    if handoff.exists():
+        result=json.loads(handoff.read_text(encoding='utf-8'))
+        if not (result.get('role')=='lead' and result.get('kind')=='plan'):
+            require_current_plan(p,control,result['reference'].split(':')[0])
+    processed=publish_result(p,client,control)
     existing={r["id"] for r in control.snapshot()["releases"]}
     for issue in client.pages(client.root+"/issues?state=open&labels=sdlc%3Aplan"):
         release_id="R-"+str(issue["number"])
@@ -584,6 +661,11 @@ def reconcile(p,args):
         words=comment["body"].strip().split();actor=comment["user"]["login"]
         try:
             if words[1]=="plan" and len(words)==3:adopt_plan(p,control,ROOT/words[2],actor)
+            elif words[1]=="amend-plan" and len(words)==5:
+                plan_path=ROOT/words[3]
+                document,_=amendment_document(p,plan_path)
+                if document['release_id']!=words[2]:continue
+                amend_plan(p,control,plan_path,words[4],actor)
             elif words[1]=="revise-plan" and len(words)>=4:revise_plan(control,words[2]," ".join(words[3:]),actor)
             elif words[1]=="approve-plan" and len(words)==4:
                 manifest,actual=current_plan(p,words[2])
@@ -619,6 +701,8 @@ def reconcile(p,args):
                 info=client.info();base=client.request("GET",client.root+"/git/ref/heads/"+info["default_branch"])["object"]["sha"]
                 kv(key,{"revision":base,"time":time.time()},True);client.dispatch("agent-control.yml",{"action":"worker","role":"lead","task-id":reference,"revision":base});scheduled.append(key)
             continue
+        try:require_current_plan(p,control,release['id'])
+        except ValueError:continue
         for item in control.snapshot(release["id"])["items"]:
             issue_key="work-issue:"+release["id"]+":"+item["kind"]+":"+item["id"]
             if item["kind"]=="story" and not kv(issue_key):
@@ -695,6 +779,7 @@ def release(p,args):
     client=github(p);actor=principal(p,client)
     if actor not in p["founders"]["usernames"]:raise ValueError("Only a founder can request candidate/publication.")
     control=ledger(p);release_id=args.candidate_id
+    require_current_plan(p,control,release_id)
     if args.phase=="candidate":
         result=control.freeze_candidate(release_id,args.revision,actor)
         snapshot=control.snapshot(release_id);notes="\n".join("- "+i["title"] for i in snapshot["items"])
