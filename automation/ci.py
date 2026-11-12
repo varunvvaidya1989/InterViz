@@ -30,6 +30,12 @@ def target_pr(run, queued):
     return None, []
 
 
+def pr_identity(pr):
+    """Source identity that must remain bound throughout CI collection."""
+    return (pr['number'], pr['html_url'], pr['head']['sha'], pr['head']['repo']['full_name'],
+            pr['head'].get('ref'), pr['base']['repo']['full_name'], pr['base']['ref'])
+
+
 def latest_executions(client, filename, head, number, queued):
         candidates = []
         for summary in client.pages(client.root + '/actions/workflows/' + filename + '/runs', key='workflow_runs'):
@@ -65,6 +71,7 @@ def collect(p, client, pr, queued, application=True):
     Workflow bytes must match both the default branch and actual execution SHA.
     """
     head = pr['head']['sha']
+    identity = pr_identity(pr)
     repository = p['repository']['full_name']
     branch = client.info()['default_branch']
     valid_pr = (client.repository == repository
@@ -127,7 +134,7 @@ def collect(p, client, pr, queued, application=True):
             facts['current_executions']=[{key:run.get(key) for key in
                 ('id','run_attempt','updated_at','status','conclusion')} for run in current_runs]
     current = client.pr(pr['number'])
-    passed = passed and current['head']['sha'] == head
+    passed = passed and pr_identity(current) == identity
     return bool(passed), evidence
 
 
@@ -135,7 +142,8 @@ def reconcile_item(p, client, control, item, queued, verified_pr=None):
     try:
         pr = verified_pr if verified_pr is not None else client.pr(int(item['pr_url'].rsplit('/', 1)[1]))
         repository = p['repository']['full_name']
-        if (client.repository != repository or pr['head']['repo']['full_name'] != repository
+        if (pr['number'] != int(item['pr_url'].rsplit('/', 1)[1]) or pr['html_url'] != item['pr_url']
+                or client.repository != repository or pr['head']['repo']['full_name'] != repository
                 or pr['base']['repo']['full_name'] != repository
                 or pr['base']['ref'] != client.info()['default_branch']):
             raise ValueError('PR repository/base facts do not match the approved target.')

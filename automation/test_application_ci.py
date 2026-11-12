@@ -280,3 +280,23 @@ class ApplicationCI(unittest.TestCase):
         self.blocked();item=self.control.snapshot()['items'][0]
         self.assertEqual((item['head_sha'],item['epoch'],item['author_ids']),
                          (before['head_sha'],before['epoch'],before['author_ids']))
+
+    def test_final_pr_binding_revokes_green_when_target_changes_during_jobs(self):
+        original_pull=copy.deepcopy(self.api.pull)
+        for mode in ('base-ref','base-repository','head-repository','number','url','head-ref'):
+            with self.subTest(mode=mode):
+                self.api.pull=copy.deepcopy(original_pull);self.record();self.ready()
+                original=self.api.pages;changed=False
+                def pages(path,key=None):
+                    nonlocal changed
+                    if '/runs/2/attempts/1/jobs' in path and not changed:
+                        changed=True
+                        if mode=='base-ref':self.api.pull['base']['ref']='unapproved-target'
+                        elif mode=='base-repository':self.api.pull['base']['repo']['full_name']='evil/repo'
+                        elif mode=='head-repository':self.api.pull['head']['repo']['full_name']='evil/repo'
+                        elif mode=='number':self.api.pull['number']=99
+                        elif mode=='url':self.api.pull['html_url']='https://fixture/pull/99'
+                        elif mode=='head-ref':self.api.pull['head']['ref']='other-source'
+                    return original(path,key)
+                with patch.object(self.api,'pages',side_effect=pages):self.record()
+                self.assertTrue(changed);self.blocked()
