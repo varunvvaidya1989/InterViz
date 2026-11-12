@@ -562,6 +562,77 @@ class Control:
                         'rejection_seq':rejections[-1],'evidence':json.loads(raw)})
             return self._decoded(self._item(db,release_id,item_id,kind))
 
+    def accept_recovered_ci_workflow(self, release_id, item_id, head_sha, blob_sha, plan_hash, actor, kind='story'):
+        """Exact founder acceptance of the recovered infrastructure CI definition."""
+        self._founder(actor);_sha(head_sha);_sha(blob_sha);_sha(plan_hash,plan=True)
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            item=self._item(db,release_id,item_id,kind)
+            _require(release['plan_approved_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash']
+                     and item['head_sha']==head_sha and item['status']=='SUBMITTED',
+                     'stale_head','Workflow acceptance needs the current approved submitted recovery.')
+            recovered=[]
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='first_publication_recovered'",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id and value.get('head_sha')==head_sha:recovered.append(value)
+            _require(len(recovered)==1,'unproven_source','Only a verified retained-source recovery may accept this workflow.')
+            payload={'kind':kind,'item_id':item_id,'head_sha':head_sha,'pr_url':item['pr_url'],'epoch':item['epoch'],
+                     'workflow_path':'.github/workflows/infrastructure-ci.yml','blob_sha':blob_sha,'plan_hash':plan_hash}
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='recovered_ci_workflow_accepted'",(release_id,)):
+                if json.loads(row['payload'])==payload:return payload
+            self._event(db,release_id,'recovered_ci_workflow_accepted',actor,payload)
+            return payload
+
+    def recover_first_publication(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
+                                  plan_hash, evidence, actor, kind='story'):
+        """Founder restores exact retained first source, without another attempt."""
+        self._founder(actor);_sha(head_sha);_sha(plan_hash,plan=True)
+        _identity(worker_id);_identity(lease_id);raw=_evidence(evidence)
+        _require(isinstance(pr_url,str) and re.fullmatch(r'https://github\.com/[^/\s]+/[^/\s]+/pull/[1-9][0-9]*',pr_url),
+                 'invalid_pr','Recovery needs a canonical GitHub PR URL.')
+        _require(all(type(evidence.get(key)) is int and evidence[key]>0 for key in ('run_id','run_attempt','artifact_id'))
+                 and re.fullmatch(r'sha256:[a-f0-9]{64}',evidence.get('artifact_digest','')),
+                 'unproven_source','Recovery requires authenticated retained-source provenance.')
+        payload={'kind':kind,'item_id':item_id,'head_sha':head_sha,'pr_url':pr_url,'worker_id':worker_id,
+                 'lease_id':lease_id,'plan_hash':plan_hash,'publisher_id':actor,'evidence':json.loads(raw)}
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            item=self._item(db,release_id,item_id,kind)
+            _require(release['plan_approved_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash'],
+                     'stale_plan','Publication recovery must preserve the approved plan and task contracts.')
+            _require(kind=='story' and json.loads(item['scope']).get('kind')=='infrastructure',
+                     'infrastructure_only','First-publication recovery is limited to approved infrastructure.')
+            prior=[]
+            for row in db.execute("SELECT payload FROM events WHERE release_id=? AND type='first_publication_recovered'",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id:prior.append(value)
+            if prior:
+                _require(prior==[payload] and item['status'] in {'SUBMITTED','INTEGRATED','DONE'}
+                         and item['head_sha']==head_sha and item['pr_url']==pr_url,
+                         'recovery_used','Recovery cannot replace source or reopen a rejected candidate.')
+                return self._decoded(item)
+            _require(item['status']=='IN_PROGRESS' and not item['head_sha'] and not item['pr_url'],
+                     'invalid_stage','Only interrupted first publication can be recovered.')
+            _require(item['lease_id']==lease_id and item['lease_worker']==worker_id and item['lease_until'] is not None
+                     and item['lease_until']<=self.clock(),'invalid_lease','Original worker must have an expired matching lease.')
+            for row in db.execute("SELECT type,payload FROM events WHERE release_id=? AND type IN ('pr_head_associated','item_claimed') ORDER BY seq",(release_id,)):
+                value=json.loads(row['payload'])
+                if value.get('kind')==kind and value.get('item_id')==item_id:
+                    _require(row['type']!='pr_head_associated','prior_submission','Previously submitted work cannot use first-publication recovery.')
+            for dep in json.loads(item['depends_on']):
+                _require(self._item(db,release_id,dep)['status'] in {'INTEGRATED','DONE'},
+                         'dependency_not_ready','Recovery needs integrated dependencies.')
+            paths=json.loads(item['scope'])['allowed_paths']
+            for lease in db.execute('SELECT scope FROM items WHERE lease_until>?',(self.clock(),)):
+                _require(not _overlap(paths,json.loads(lease['scope'])['allowed_paths']),
+                         'scope_busy','A live worker owns overlapping source paths.')
+            authors=sorted(set(json.loads(item['author_ids'])+[worker_id,actor,'github:'+actor]))
+            db.execute("UPDATE items SET status='SUBMITTED',head_sha=?,pr_url=?,author_ids=?,integration_sha=NULL,epoch=epoch+1,lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (head_sha,pr_url,_json(authors),self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'first_publication_recovered',actor,payload)
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
     def recover_submission(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
                            plan_hash, evidence, actor, kind="story", live_worker=False):
         """Restore a proven unchanged prior submission after verified worker completion.

@@ -181,6 +181,17 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(retained['source_bundle'],result['source_bundle'])
         self.assertFalse(any(call[0]=='push' for call in self.git_calls))
 
+    def test_optional_publisher_token_is_used_only_for_push(self):
+        with patch.dict('os.environ',{'SDLC_PUBLISH_TOKEN':'fixture-workflow-publisher-token'}), \
+             patch.object(self,'git_boundary',side_effect=self.git_boundary) as boundary:
+            self.publish()
+        push=[call for call in boundary.call_args_list if call.args[0][0]=='push']
+        self.assertEqual(len(push),1)
+        self.assertEqual(push[0].kwargs.get('token'),'fixture-workflow-publisher-token')
+        for call in boundary.call_args_list:
+            if call.args[0][0]!='push':self.assertNotIn('token',call.kwargs)
+        self.assertEqual(self.client.token,'fixture-controller-token')
+
 
 class SourceBundleTests(unittest.TestCase):
     def setUp(self):

@@ -90,7 +90,17 @@ def git(args, cwd, token=None, check=True):
         import base64
         env.update({"GIT_CONFIG_COUNT":"1","GIT_CONFIG_KEY_0":"http.https://github.com/.extraheader","GIT_CONFIG_VALUE_0":"AUTHORIZATION: basic "+base64.b64encode(("x-access-token:"+token).encode()).decode()})
     result=subprocess.run(["git","-c","core.hooksPath="+os.devnull,"-c","core.fsmonitor=false",*args],cwd=cwd,env=env,text=True,encoding="utf-8",capture_output=True,timeout=90,check=False)
-    if check and result.returncode: raise RuntimeError("Git operation failed; credentials and raw subprocess diagnostics are withheld.")
+    if check and result.returncode:
+        # Only fixed labels cross this boundary: never echo arguments or stderr.
+        operations={'clone','fetch','checkout','add','commit','push','rev-parse','merge-base','check-ref-format'}
+        operation=next((arg for arg in args if arg in operations),'other')
+        diagnostic=result.stderr.lower()
+        reason='operation-failed'
+        if 'refusing to allow' in diagnostic and ('workflow' in diagnostic):reason='workflow-write-permission-required'
+        elif 'authentication failed' in diagnostic or 'could not read username' in diagnostic:reason='authentication-failed'
+        elif 'non-fast-forward' in diagnostic or 'fetch first' in diagnostic:reason='remote-head-changed'
+        elif 'could not resolve host' in diagnostic or 'failed to connect' in diagnostic:reason='transport-unavailable'
+        raise RuntimeError('Git '+operation+' failed ('+reason+'); credentials and raw diagnostics are withheld.')
     return result.stdout.strip()
 
 

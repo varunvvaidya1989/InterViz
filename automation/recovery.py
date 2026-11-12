@@ -68,7 +68,7 @@ def unchanged_result(result,item,plan_hash):
     return result
 
 
-def source_handoff(client,run,item,plan_hash,download=download_artifact):
+def retained_handoff(client,run,item,download=download_artifact):
     """Verify source run, task lease and digest before returning controller data."""
     info=client.info()
     workflow=client.request('GET',client.root+'/actions/workflows/agent-control.yml')
@@ -100,9 +100,36 @@ def source_handoff(client,run,item,plan_hash,download=download_artifact):
     # Enforce the digest also for injected transports used by fixture tests.
     if artifact.get('digest')!='sha256:'+hashlib.sha256(data).hexdigest():
         raise ValueError('Recovery artifact digest does not match GitHub metadata.')
-    result=unchanged_result(read_result(data),item,plan_hash)
+    result=read_result(data)
     return result,{'run_id':run['id'],'run_attempt':run['run_attempt'],'artifact_id':artifact['id'],
                    'artifact_digest':artifact['digest'],'url':run['html_url']}
+
+
+def source_handoff(client,run,item,plan_hash,download=download_artifact):
+    result,source=retained_handoff(client,run,item,download)
+    return unchanged_result(result,item,plan_hash),source
+
+
+def publication_handoff(client,run,item,plan_hash,download=download_artifact):
+    """First publication uses retained source bytes, never unchanged recovery."""
+    from .runtime import validate_source_bundle
+    import re
+    result,source=retained_handoff(client,run,item,download)
+    expected=item['release_id']+':'+item['kind']+':'+item['id']
+    if (not isinstance(result,dict) or result.get('reference')!=expected
+            or result.get('kind')!=item['kind'] or result.get('role')!=item['scope'].get('role','coding')
+            or result.get('role') not in {'coding','devops','ui-ux'}
+            or result.get('plan_hash')!=plan_hash or result.get('worker_id')!=item.get('lease_worker')
+            or result.get('lease_id')!=item.get('lease_id')
+            or not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',result.get('revision',''))
+            or not isinstance(result.get('baseline'),dict) or not result['baseline']
+            or not isinstance(result.get('after'),dict) or not result.get('changed_paths')):
+        raise ValueError('Retained source does not match the original leased publication.')
+    if validate_report(result.get('report'))['verdict']!='SUBMITTED':
+        raise ValueError('Only successful submitted worker source can be published.')
+    validate_source_bundle(result.get('source_bundle'),result['baseline'],result['after'],
+                           result['changed_paths'],item['scope']['allowed_paths'])
+    return result,source
 
 
 def verified_pass_report(client,event,item,plan_hash,contract,download=download_artifact):

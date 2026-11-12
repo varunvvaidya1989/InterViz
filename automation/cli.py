@@ -17,7 +17,7 @@ from .github import GitHub, GitHubError, SnapshotStore
 from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CONTRACT, sanitized_failure_report
 from .runtime import (changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment,
                       source_bundle, publish_source_bundle, publisher_checkout, credential_free)
-from .recovery import source_handoff, unchanged_result, verified_pass_report
+from .recovery import source_handoff, unchanged_result, verified_pass_report, publication_handoff
 from . import ci
 
 from .approvals import validate_intent
@@ -299,6 +299,75 @@ def adopt_submission(p,args):
     return output('lead-submission.json',{'task_id':args.task_id,'revision':args.revision,
                   'lead_contract':args.lead_contract,'status':'SUBMITTED','result':result})
 
+def recover_publication(p,args):
+    """Bind an externally published exact retained source to its original task."""
+    if not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',args.revision or '') or args.source_run_id<=0:
+        raise ValueError('Recovery requires an exact candidate SHA and positive source run ID.')
+    client=github(p);actor=principal(p,client)
+    if actor not in p['founders']['usernames']:raise ValueError('Only the founder may recover first publication.')
+    run=client.request('GET',client.root+'/actions/runs/'+os.environ['GITHUB_RUN_ID'])
+    if (run.get('event')!='workflow_dispatch' or run.get('head_branch')!=p['repository']['default_branch']
+            or run.get('path')!='.github/workflows/agent-control.yml'):
+        raise ValueError('Recovery requires the trusted default-branch controller workflow.')
+    control=ledger(p);release_id,kind,item_id,item=find_item(control,args.task_id)
+    _,plan_hash=require_current_plan(p,control,release_id)
+    canonical='https://github.com/'+client.repository+'/pull/'+str(args.pull_request)
+    def matching(value):
+        return (value.get('number')==args.pull_request and value.get('html_url')==canonical
+                and value.get('state')=='open' and not value.get('draft')
+                and value.get('user',{}).get('login') in {actor,'github-actions[bot]'}
+                and value.get('head',{}).get('sha')==args.revision
+                and value.get('head',{}).get('repo',{}).get('full_name')==client.repository
+                and value.get('base',{}).get('ref')==p['repository']['default_branch']
+                and value.get('base',{}).get('repo',{}).get('full_name')==client.repository)
+    pr=client.pr(args.pull_request)
+    if not matching(pr):raise ValueError('Recovery PR identity, state or exact head does not match.')
+    blob=getattr(args,'accept_ci_workflow_blob',None)
+    if blob:
+        if not re.fullmatch(r'[a-f0-9]{40}|[a-f0-9]{64}',blob):raise ValueError('Workflow acceptance requires an exact Git blob SHA.')
+        proposed=client.file('.github/workflows/infrastructure-ci.yml',args.revision)
+        if proposed['sha']!=blob:raise ValueError('The explicitly accepted CI workflow blob does not match the candidate.')
+    # An identical signed transition may be retried after cache/save interruption.
+    prior=[e for e in control.events(release_id) if e['type']=='first_publication_recovered'
+           and e['payload'].get('kind')==kind and e['payload'].get('item_id')==item_id]
+    if prior:
+        value=prior[-1]['payload']
+        if (value['head_sha']!=args.revision or value['pr_url']!=canonical
+                or value['evidence']['run_id']!=args.source_run_id or value['publisher_id']!=actor):
+            raise ValueError('The original publication recovery cannot be changed.')
+        kv('protected:'+canonical,protected_changes(value['evidence']['changed_paths'],p),True)
+        restored=control.recover_first_publication(release_id,item_id,args.revision,canonical,value['worker_id'],
+                   value['lease_id'],plan_hash,value['evidence'],actor,kind=kind)
+    else:
+        if item['status']!='IN_PROGRESS' or item.get('pr_url') or item.get('head_sha') or not item.get('lease_until') or item['lease_until']>time.time():
+            raise ValueError('Only expired, interrupted first publication can be recovered.')
+        source_run=client.request('GET',client.root+'/actions/runs/'+str(args.source_run_id))
+        result,source=publication_handoff(client,source_run,item,plan_hash)
+        files,protected=pr_files(client,pr,item,p)
+        if sorted(f['filename'] for f in files)!=result['changed_paths'] or any(f.get('previous_filename') for f in files):
+            raise ValueError('Recovery candidate diff differs from the retained changed paths.')
+        clean=ROOT/'.sdlc/recovery-checkouts'/uuid.uuid4().hex;clean.parent.mkdir(parents=True,exist_ok=True)
+        publisher_checkout(ROOT,clean,result['revision'],client.repository)
+        if scan_files(clean)!=result['baseline']:raise ValueError('Retained source baseline differs from the exact base commit.')
+        git(['fetch','https://github.com/'+client.repository+'.git',args.revision],clean)
+        parents=git(['rev-list','--parents','-n','1',args.revision],clean).split()
+        if parents!=[args.revision,result['revision']]:raise ValueError('Recovery candidate must be a direct child of the retained base.')
+        git(['checkout','--detach',args.revision],clean)
+        if scan_files(clean)!=result['after']:raise ValueError('Recovery candidate bytes differ from retained worker source.')
+        if not matching(client.pr(args.pull_request)):raise ValueError('Recovery PR changed during validation.')
+        source.update(source_base_sha=result['revision'],handoff_sha256=digest(result),
+                      lease_started=item['lease_started'],lease_until=item['lease_until'],changed_paths=result['changed_paths'])
+        kv('protected:'+canonical,protected,True)
+        restored=control.recover_first_publication(release_id,item_id,args.revision,canonical,result['worker_id'],
+                   result['lease_id'],plan_hash,source,actor,kind=kind)
+    if blob:
+        control.accept_recovered_ci_workflow(release_id,item_id,args.revision,blob,plan_hash,actor,kind=kind)
+    # These caches are repaired idempotently from the durable transition event.
+    finish_recovery_cache(control)
+    return output('publication-recovery.json',{'task_id':args.task_id,'revision':args.revision,'source_run_id':args.source_run_id,
+                                              'status':'SUBMITTED','result':restored})
+
+
 def prepare_candidate(p,control,release_id,revision,actor):
     require_current_plan(p,control,release_id)
     result=control.freeze_candidate(release_id,revision,actor)
@@ -410,7 +479,14 @@ def record_ci_run(p,client,control,run):
             # A PR cannot redefine the CI that certifies itself.
             base=client.file(".github/workflows/infrastructure-ci.yml",client.info()["default_branch"])
             proposed=client.file(".github/workflows/infrastructure-ci.yml",target)
-            if base["sha"]!=proposed["sha"]:raise ValueError("CI workflow changes need separate trusted acceptance.")
+            if base["sha"]!=proposed["sha"]:
+                _,approved_hash=require_current_plan(p,control,item['release_id'])
+                acceptance={'kind':item['kind'],'item_id':item['id'],'head_sha':target,'pr_url':item['pr_url'],
+                            'epoch':item['epoch'],'workflow_path':'.github/workflows/infrastructure-ci.yml',
+                            'blob_sha':proposed['sha'],'plan_hash':approved_hash}
+                if not any(e['type']=='recovered_ci_workflow_accepted' and e['actor'] in p['founders']['usernames']
+                           and e['payload']==acceptance for e in control.events(item['release_id'])):
+                    raise ValueError("CI workflow changes need separate trusted acceptance.")
             passed=run.get("conclusion")=="success"
             control.record_ci(item["release_id"],item["id"],target,passed,{"run_id":run["id"],"url":run["html_url"],"workflow_id":expected["id"]},"github:ci",kind=item["kind"])
             client.request("POST",client.root+"/check-runs",{"name":"sdlc-infrastructure-ci","head_sha":target,"status":"completed","conclusion":"success" if passed else "failure","output":{"title":"Verified CI provenance","summary":run["html_url"]}})
@@ -592,10 +668,11 @@ def finish_recovery_cache(control):
     # old scheduling receipts blocking the new evidence epoch forever.
     for release in control.snapshot()['releases']:
         for event in control.events(release['id']):
-            if event['type'] not in {'submission_recovered','review_contract_corrected','review_environment_blocked','lead_submission_adopted'}:continue
+            if event['type'] not in {'submission_recovered','review_contract_corrected','review_environment_blocked','lead_submission_adopted','first_publication_recovered'}:continue
             value=event['payload']
             if event['type']=='submission_recovered':marker='recovery-cache-done:'+value['lease_id']
             elif event['type']=='review_environment_blocked':marker='review-environment-cache-done:'+str(event['seq'])
+            elif event['type']=='first_publication_recovered':marker='first-publication-cache-done:'+str(event['seq'])
             elif event['type']=='lead_submission_adopted':marker='lead-adoption-cache-done:'+str(event['seq'])
             else:marker='review-contract-cache-done:'+release['id']+':'+value['kind']+':'+value['item_id']+':'+value['contract']
             if kv(marker):continue
@@ -759,7 +836,7 @@ def publish_result(p,client,control):
         sha=git(["rev-parse","HEAD"],clean)
         git(['merge-base','--is-ancestor',result['revision'],sha],clean)
         if prior:existing_pr(result['revision'])
-        git(["push","https://github.com/"+client.repository+".git","HEAD:refs/heads/"+branch],clean,token=client.token)
+        git(["push","https://github.com/"+client.repository+".git","HEAD:refs/heads/"+branch],clean,token=os.environ.get('SDLC_PUBLISH_TOKEN') or client.token)
         if prior:pr=existing_pr(sha)
         else:
             info=client.info();pr=client.request("POST",client.root+"/pulls",{"title":f"[{release_id}/{item_id}] {item['title']}","head":branch,"base":info["default_branch"],"body":report["summary"]+f"\n\n<!-- sdlc:{release_id}:{kind}:{item_id} -->\nPlan: {result['plan_hash']}\nAuthor execution: {result['worker_id']}"})
@@ -969,6 +1046,7 @@ def parser():
     w=sub.add_parser("worker");w.add_argument("--role",required=True);w.add_argument("--task-id",required=True);w.add_argument("--revision",required=True);w.add_argument("--event-path")
     a=sub.add_parser('adopt-submission');a.add_argument('--task-id',required=True);a.add_argument('--revision',required=True);a.add_argument('--pull-request',type=int,required=True);a.add_argument('--plan-hash',required=True);a.add_argument('--lead-contract',required=True)
 
+    a=sub.add_parser('recover-publication');a.add_argument('--task-id',required=True);a.add_argument('--revision',required=True);a.add_argument('--pull-request',type=int,required=True);a.add_argument('--source-run-id',type=int,required=True);a.add_argument('--accept-ci-workflow-blob')
     a=sub.add_parser('approve');a.add_argument('--kind',choices=['plan','release'],required=True);a.add_argument('--release-id',required=True);a.add_argument('--expected-hash',required=True);a.add_argument('--revision',required=True)
     r=sub.add_parser("release");r.add_argument("--phase",choices=["candidate","publish"],required=True);r.add_argument("--candidate-id",required=True);r.add_argument("--revision",required=True)
     return p
@@ -987,6 +1065,7 @@ def main(argv=None):
         elif args.command=="worker":result=worker(p,args)
         elif args.command=='adopt-submission':result=adopt_submission(p,args)
 
+        elif args.command=='recover-publication':result=recover_publication(p,args)
         elif args.command=='approve':result=approve(p,args)
         elif args.command=="reconcile":result=reconcile(p,args)
         else:result=release(p,args)
