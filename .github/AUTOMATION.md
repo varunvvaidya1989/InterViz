@@ -10,7 +10,8 @@ This directory wires the trusted `automation.cli` controller into GitHub Actions
 | `infrastructure-ci.yml` | Read-only, secret-free PR/default-branch infrastructure checks | `python -m unittest discover -s automation -p 'test_*.py' -v`; `validate --scope infrastructure --revision ...` |
 | `review-integration.yml` | CI/review facts, independent review, bounded debate/rework and exact-revision merge eligibility | `event`; queued `worker --role review`; `reconcile`; signed state restore/save |
 | `staging-qa.yml` | Exact integrated-revision checks and QA findings/bug tickets | `validate --scope infrastructure|staging --revision ...`; optional queued `worker --role qa`; `reconcile`; signed state restore/save |
-| `release.yml` | Founder-only candidate assembly/publication | `release --phase candidate|publish --candidate-id ... --revision ...`; signed state restore/save |
+| `founder-approval.yml` | Dashboard approval of exact plans or release candidates; continue approved work | `approve --kind plan|release --release-id ... --expected-hash ... --revision ...`; signed state restore/save; `reconcile` |
+| `release.yml` | Founder candidate assembly; authorized exact-approved publication | `release --phase candidate|publish --candidate-id ... --revision ...`; signed state restore/save |
 
 `doctor --format json` reports readiness and missing configuration. It is not evidence that application integrations are configured or that staging passed. Actual application staging validation must fail/return blocked until an approved real staging adapter and deployment revision are configured. The workflows contain no pretend deployment step.
 
@@ -44,7 +45,7 @@ GitHub concurrency is not a durable queue: a newer pending run can replace an ol
 
 Founder plan approval binds the exact plan revision and execution bounds. Independent review is separate from the coding author. Bounded debate/rework follows policy; exhausted rounds create a founder/lead decision need rather than an unbounded agent loop. Merge requires exact-current-commit evidence and does not equal release approval.
 
-QA failure creates a reproducible, exact-revision defect under policy; blocked staging remains blocked. QA validates the requested `infrastructure` or `staging` scope, and the queued worker receives that scope through its event/policy contract. Release publication requires the founder's exact candidate/commit/manifest approval (`/sdlc approve-release R SHA MANIFEST_HASH`) and fresh applicable CI/review/QA evidence. Replace `R`, `SHA`, and `MANIFEST_HASH` with the candidate's exact published values. Candidate assembly, labels, issue checkboxes, fixtures, dry runs, and workflow dispatch by themselves never stand in for those facts.
+QA failure creates a reproducible, exact-revision defect under policy; blocked staging remains blocked. QA validates the requested `infrastructure` or `staging` scope, and the queued worker receives that scope through its event/policy contract. Release publication requires the founder's exact candidate approval from the dashboard and fresh applicable CI/review/QA evidence. The dashboard attaches the candidate commit and manifest automatically; no command comment is required. Candidate assembly, labels, issue checkboxes, fixtures, dry runs, and workflow dispatch by themselves never stand in for those facts.
 
 Artifacts under `.sdlc/output/` are retained for the documented short interval. They contain redacted operational/test evidence, not the state ledger or raw private prompts. Changelog/release records must identify the integrated commit and clearly state infrastructure-only scope when the SaaS application has not been built.
 
@@ -58,6 +59,12 @@ Action references were resolved from each official repository's remote tag on 10
 
 Pins should be updated through reviewed PRs after checking the official release/commit and runner compatibility. No privileged `pull_request_target` checkout or artifact-to-shell execution is used. Official guidance: [secure workflow use](https://docs.github.com/en/actions/reference/security/secure-use), [workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), and [deployment environment protections](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
 
+
+## Dashboard approval transport
+
+The founder reviews summaries in the local dashboard and selects Approve plan or Approve release. The server verifies current policy, GitHub identity and the displayed version before dispatching founder-approval.yml against the trusted default branch. The workflow authenticates the run actor again, restores signed state, checks current source/PR head or frozen QA candidate, records approval, reconciles and saves with compare-and-swap. The browser never supplies founder identity or approval authority. Request acceptance is not approval completion.
+
+After QA, reconciliation freezes a candidate automatically. Authorized publication dispatch uses the bot identity but requires the saved founder candidate/manifest approval, current policy and exact current CI/review/QA. The bot identity alone grants no approval. Production remains disabled until its actual adapter and authority are configured. The optional environment protections remain honored.
 
 ## Retained submission recovery
 

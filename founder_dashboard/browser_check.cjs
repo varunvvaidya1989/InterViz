@@ -1,0 +1,57 @@
+// Local UI checks. PLAYWRIGHT_MODULE/CHROMIUM_PATH may point to existing tools.
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE || '../.tools/dashboard-qa/node_modules/playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const dashboardUrl=process.env.FOUNDER_DASHBOARD_URL || 'http://127.0.0.1:8010';
+(async()=>{
+  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  const page=await browser.newPage({viewport:{width:1440,height:1080}});
+  const errors=[],remote=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.on('request',r=>{if(!r.url().startsWith(dashboardUrl+'/'))remote.push(r.url());});
+  try {
+    await page.goto(dashboardUrl+'/');
+    await page.locator('#content').waitFor({state:'visible',timeout:30000});
+    const status=await (await page.request.get(dashboardUrl+'/api/status')).json();
+    assert(status.data.tasks.length>0);
+    assert.equal(Number(await page.locator('.metric-value').first().innerText()),status.data.tasks.length);
+    await page.getByRole('button',{name:/Work items/}).click();
+    const target=status.data.tasks.find(t=>t.id==='M1-OPS-101')||status.data.tasks[0];
+    await page.getByLabel('Search work items').fill(target.id);
+    assert.equal(await page.locator('#work-results tbody tr').count(),1);
+    await page.locator('#work-results .task-open').first().click();
+    assert(await page.locator('#task-dialog').isVisible());
+    assert((await page.locator('#task-detail').innerText()).includes(target.title));
+    await page.keyboard.press('Escape');
+    assert(!(await page.locator('#task-dialog').isVisible()));
+    await page.getByRole('button',{name:'Board',exact:true}).click();
+    assert.equal(await page.locator('.board-card').count(),1);
+    await page.getByLabel('Search work items').fill('no-matching-work-fixture');
+    assert.equal(await page.locator('.board-card').count(),0);
+    await page.getByLabel('Search work items').fill('');
+    await page.getByLabel('Filter agent role').selectOption('devops');
+    assert.equal(await page.locator('.board-card').count(),status.data.tasks.filter(t=>t.role==='devops').length);
+    await page.getByRole('button',{name:/Agent activity/,exact:false}).first().click();
+    assert(await page.locator('#agents-view').isVisible());
+    await page.getByRole('button',{name:/Timeline/}).click();
+    assert((await page.locator('.timeline-event').count())>0);
+    await page.getByRole('button',{name:/Overview/}).click();
+    fs.mkdirSync('artifacts',{recursive:true});
+    await page.screenshot({path:'artifacts/founder-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    await page.screenshot({path:'artifacts/founder-mobile.png',fullPage:true});
+    const malicious=structuredClone(status);
+    malicious.error='Fixture: refresh failed; showing previous data.';
+    malicious.data.releases[0].title='<img src=x onerror="window.__injected=true">';
+    await page.route('**/api/status',route=>route.fulfill({json:malicious}));
+    await page.reload();
+    await page.locator('#error').waitFor({state:'visible'});
+    assert(await page.locator('#content').isVisible());
+    assert.equal(await page.evaluate(()=>window.__injected),undefined);
+    assert((await page.locator('#release-title').innerText()).includes('<img'));
+    assert.deepEqual(errors,[]);
+    assert.deepEqual(remote,[]);
+    console.log('PASS live counts, search, task drawer, keyboard close, board, role filter, navigation, mobile reflow, cached-data error, HTML escaping, no external browser requests.');
+  } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

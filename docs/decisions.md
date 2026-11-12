@@ -89,6 +89,10 @@ Name suggestion for later owner review: **TraceForge**. It is a creative suggest
 Independent review must inspect the queued submitted commit in its isolated worker workspace. The default-branch controller supplies imports, reviewer role instructions and the agent image; candidate files remain untrusted and sandboxed. A missing object or mismatched HEAD stops execution before any model call. The authenticated diff remains available as context. GitHub action_required is approval waiting, not executed CI evidence. Preserve existing CI receipt identities to prevent historical replay. Approval-waiting runs do not consume receipts. Previously consumed runs need a fresh CI dispatch; attempt-level migration is deferred until evidence ordering is designed and verified. This infrastructure repair does not alter founder approval or acceptance requirements. See docs/plans/INFRA-PR-51-REVIEW.md for scope and evidence.
 
 
+## ADR-019 - Founder approval buttons replace operational command comments
+
+On 11 November 2026 the founder requested approval-only operations and selected the founder dashboard. Show plan and release summaries and attach exact identifiers automatically on approval. Use the existing authenticated GitHub account to dispatch a founder-only trusted default-branch workflow, retaining exact plan/policy/source/candidate binding and signed hosted state. The local server cannot grant approval; queued requests remain pending until controller confirmation. Keep legacy comment commands for compatibility, remove them from the required founder journey, prepare candidates automatically after QA, and preserve independent review, task limits, protected-path acceptance and production configuration. This infrastructure change does not approve any SaaS milestone or reset stuck tasks.
+
 ## ADR-020 - Recover unchanged interrupted submissions without resetting attempts
 
 The founder requested recovery of M1-OPS-101 on 11 November 2026. Its retained second worker result correctly resubmitted the unchanged original candidate, but the controller treated zero changed paths as a publication failure. Permit this only for the exact prior PR/head and same approved contract. Recover expired publication from verified hosted run/artifact evidence and canonical candidate bytes, transactionally preserve both attempts and historical evidence, create a fresh evidence epoch and request fresh review/CI. Recovery is not a third implementation attempt or acceptance. Trigger reconciliation on trusted controller pushes as well as schedules, and escalate expired exhausted tasks that cannot recover. See docs/plans/INFRA-TASK-RECOVERY.md. No application plan/policy changes or production enablement.
@@ -102,3 +106,14 @@ The restored M1-OPS-101 review proved that all-files read-only tools prevent tem
 ## ADR-022 - Preserve positive PASS review evidence
 
 The shared QA/review schema allows PASS, but the review publisher expected only APPROVE. Two completed corrected-sandbox reviews independently passed the exact candidate's 48 tests and found no defects, yet were mislabeled as environment failures. Normalize positive PASS to canonical APPROVE without altering its report. Recover an already completed result only from matching signed event plus authenticated trusted run/artifact and exact reviewer/head/approved-plan/contract proof, excluding all later code/review transitions. Retain every old receipt, verdict and attempt, request fresh CI, and record provenance for the canonical interpretation. This is a label correction of actual successful evidence, not a failed-check waiver or another paid review.
+
+## ADR-023 - Consolidate founder approvals with current-plan recovery barriers
+
+Keep the dashboard approval buttons on the same controller revision as bounded
+lead adoption and authenticated started-plan amendments. Candidate preparation and
+release approval must pass the current manifest, ledger and approval hash barrier;
+the read-only dashboard suppresses release cards when those versions disagree.
+Retain the published infrastructure CI workflow unchanged so the PR cannot redefine
+its own certifying workflow. Run dashboard transport fixtures in a separate
+read-only workflow. This integration does not approve a plan, reset task attempts,
+enable production or replace independent exact-revision verification.
