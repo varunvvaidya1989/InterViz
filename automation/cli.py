@@ -357,6 +357,52 @@ def pr_files(client,pr,item,p):
     return files,protected_changes(paths,p)
 
 
+def queue_ci(p, client, item, pr):
+    """Recover missed bot events per workflow without consuming failed dispatches.
+
+    A run found after a dispatch/save interruption repairs the durable receipt.
+    A transport error without a visible run is retried on the next reconcile.
+    """
+    head = item['head_sha']
+    repository = p['repository']['full_name']
+    branch = client.info()['default_branch']
+    current = client.pr(pr['number'])
+    if (not re.fullmatch(r'[a-f0-9]{40}', head)
+            or ci.pr_identity(current) != ci.pr_identity(pr)
+            or pr['head']['sha'] != head or client.repository != repository
+            or pr['head']['repo']['full_name'] != repository
+            or pr['base']['repo']['full_name'] != repository or pr['base']['ref'] != branch):
+        raise ValueError('CI dispatch requires the exact current same-repository PR head.')
+    receipt = {'pr': pr['number'], 'head': head, 'time': time.time()}
+    old = kv('ci-queued:' + head)
+    if old and old.get('pr') != pr['number']:
+        raise ValueError('CI queue head is already bound to a different PR.')
+    kv('ci-queued:' + head, receipt, True)
+    queued = []
+    for filename in ('infrastructure-ci.yml', 'application-ci.yml'):
+        # Before registration only infrastructure can establish bootstrap CI.
+        # Application dispatch may fail until the separately accepted workflow
+        # exists on the default branch; no success receipt is written then.
+        key = f"ci-dispatch:{pr['number']}:{head}:{filename}"
+        if kv(key):
+            continue
+        expected = client.request('GET', client.root + '/actions/workflows/' + filename)
+        title = f'SDLC CI workflow_dispatch pr={pr["number"]} sha={head}'
+        recovered = any(run.get('display_title') == title
+                        and run.get('event') == 'workflow_dispatch'
+                        and run.get('workflow_id') == expected['id']
+                        and run.get('head_branch') == branch
+                        and run.get('repository', {}).get('full_name') == repository
+                        for run in client.pages(client.root + '/actions/workflows/' + filename + '/runs', key='workflow_runs'))
+        if not recovered:
+            if ci.pr_identity(client.pr(pr['number'])) != ci.pr_identity(pr):
+                raise ValueError('PR changed before CI dispatch.')
+            client.dispatch(filename, {'pull-request': str(pr['number']), 'revision': head})
+        kv(key, dict(receipt, workflow_id=expected['id'], recovered=recovered), True)
+        queued.append(filename)
+    return queued
+
+
 def record_ci_run(p,client,control,run):
     if p['checks']['application_configured']:
         # The notification is only a wake-up hint, never evidence. Re-fetch
@@ -889,9 +935,12 @@ def reconcile(p,args):
                 if len(diff)>180000:raise ValueError("Review diff exceeds the complete-review limit; split the work item.")
                 kv(key,{"revision":item["head_sha"],"time":time.time(),"diff":diff,'review_contract':REVIEW_CONTRACT},True)
                 client.dispatch("agent-control.yml",{"action":"worker","role":"review","task-id":f"{release['id']}:{item['kind']}:{item['id']}","revision":item["head_sha"]});scheduled.append(key)
-            if not kv("ci-queued:"+item["head_sha"]):
-                kv("ci-queued:"+item["head_sha"],{"pr":pr["number"],"time":time.time()},True)
-                client.dispatch("infrastructure-ci.yml",{"pull-request":str(pr["number"]),"revision":item["head_sha"]})
+            try:
+                queue_ci(p,client,item,pr)
+            except GitHubError:
+                # Workflow registration/transport can lag protected bootstrap.
+                # Preserve successful workflow receipts and retry missing ones.
+                pass
             if p["authority"]["merge_enabled"] and not kv("protected:"+item["pr_url"]):
                 try:
                     if p['checks']['application_configured']:
