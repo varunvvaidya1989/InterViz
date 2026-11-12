@@ -194,7 +194,15 @@ def adopt_submission(p,args):
     if not matching(client.pr(args.pull_request)):
         raise ValueError('The lead PR changed while its complete scope was being verified.')
     changes=[{k:f[k] for k in ('filename','previous_filename','status') if k in f} for f in files]
-    result=control.adopt_lead_submission(release_id,item_id,args.revision,canonical,actor,actual,args.lead_contract,
+    initial=next((event['payload'] for event in control.events(release_id)
+                  if event['type']=='lead_submission_adopted' and event['payload'].get('kind')==kind
+                  and event['payload'].get('item_id')==item_id),None)
+    submit=control.adopt_lead_submission
+    if initial and args.lead_contract!=initial['contract']:
+        if p['limits']['max_review_rounds']!=2:
+            raise ValueError('The configured review bound does not permit a corrective lead head.')
+        submit=control.resubmit_lead_submission
+    result=submit(release_id,item_id,args.revision,canonical,actor,actual,args.lead_contract,
             {'execution':run['id'],'workflow':run['path'],'pull_request':pr['number'],
              'base':branch,'changed_files':changes,'files_sha256':digest(changes)},actor,kind=kind)
     kv('protected:'+canonical,protected,True)

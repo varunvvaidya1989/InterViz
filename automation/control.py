@@ -477,6 +477,75 @@ class Control:
                         'scope_hash':release['plan_scope_hash'],'evidence':json.loads(raw)})
             return self._decoded(self._item(db,release_id,item_id,kind))
 
+    def resubmit_lead_submission(self, release_id, item_id, head_sha, pr_url, author_id,
+                                plan_hash, contract, evidence, actor, kind='story'):
+        """One bounded corrective head after the initial lead submission is rejected."""
+        self._founder(actor);self._founder(author_id);_sha(head_sha);_sha(plan_hash,plan=True)
+        _require(actor==author_id,'identity_mismatch','The authenticated founder must own the corrected PR.')
+        _require(isinstance(contract,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{2,199}',contract),
+                 'lead_contract_required','Provide a distinct bounded lead-rework contract.')
+        raw=_evidence(evidence)
+        with self._tx() as db:
+            release=self._release(db,release_id,True);self._approved(release)
+            _require(release['plan_hash']==plan_hash and self._scope_hash(db,release_id)==release['plan_scope_hash'],
+                     'stale_plan','Resubmission must preserve the exact approved plan and original scope.')
+            item=self._item(db,release_id,item_id,kind)
+            _require(kind=='story' and json.loads(item['scope']).get('kind')=='infrastructure',
+                     'infrastructure_only','Lead correction is limited to an approved infrastructure story.')
+            def history(event):
+                values=[]
+                for row in db.execute('SELECT payload FROM events WHERE release_id=? AND type=? ORDER BY seq',(release_id,event)):
+                    value=json.loads(row['payload'])
+                    if value.get('kind')==kind and value.get('item_id')==item_id:values.append(value)
+                return values
+            initial=history('lead_submission_adopted')
+            _require(len(initial)==1,'lead_adoption_required','Only an existing initial lead adoption may be corrected.')
+            original=initial[0]
+            _require(original['pr_url']==pr_url==item['pr_url'] and original['author_id']==author_id
+                     and original['plan_hash']==plan_hash and original['scope_hash']==release['plan_scope_hash'],
+                     'lead_contract_changed','The original lead PR, author and approved scope must remain unchanged.')
+            corrections=history('lead_submission_resubmitted')
+            if corrections:
+                old=corrections[-1]
+                _require(len(corrections)==1 and old['head_sha']==head_sha and old['contract']==contract
+                         and old['pr_url']==pr_url and old['author_id']==author_id and old['plan_hash']==plan_hash
+                         and item['status']=='SUBMITTED' and item['head_sha']==head_sha
+                         and item['epoch']==old['submitted_epoch'] and not item['lease_id'],
+                         'lead_rework_exhausted','The single corrective head has been used; later rejection needs lead decomposition.')
+                return self._decoded(item)
+            _require(contract!=original['contract'] and head_sha!=original['head_sha'],
+                     'new_rework_required','A correction needs a new explicit contract and a new concrete head.')
+            _require(item['status']=='OPEN' and item['head_sha']==original['head_sha'],
+                     'rejected_submission_required','Only the original current rejected lead head may be corrected.')
+            _require(item['attempts']==original['attempts']==item['max_attempts'],
+                     'attempts_changed','Lead correction must preserve all spent implementation attempts.')
+            _require(not item['lease_until'] or item['lease_until']<=self.clock(),
+                     'lease_active','A corrective submission cannot interrupt a live worker.')
+            rejections=[]
+            for row in db.execute("SELECT seq,evidence FROM reviews WHERE release_id=? AND kind=? AND item_id=? AND head_sha=? AND epoch=? AND verdict='REQUEST_CHANGES' ORDER BY seq",
+                                  (release_id,kind,item_id,item['head_sha'],item['epoch'])):
+                report=json.loads(row['evidence']).get('report')
+                if not isinstance(report,dict) or report.get('verdict')!='BLOCKED':rejections.append(row['seq'])
+            _require(rejections,'code_rejection_required','Current-epoch code changes must have been independently requested.')
+            for dep in json.loads(item['depends_on']):
+                _require(self._item(db,release_id,dep)['status'] in {'INTEGRATED','DONE'},
+                         'dependency_not_ready','Corrective work requires accepted integrated dependencies.')
+            paths=json.loads(item['scope'])['allowed_paths']
+            for lease in db.execute('SELECT scope FROM items WHERE lease_until>?',(self.clock(),)):
+                _require(not _overlap(paths,json.loads(lease['scope'])['allowed_paths']),
+                         'scope_busy','Another live worker owns overlapping paths.')
+            authors=sorted(set(json.loads(item['author_ids'])+[author_id]))
+            db.execute("UPDATE items SET status='SUBMITTED',head_sha=?,developer_id=?,author_ids=?,integration_sha=NULL,epoch=epoch+1,lease_id=NULL,lease_worker=NULL,lease_until=NULL,updated_at=? WHERE release_id=? AND kind=? AND id=?",
+                       (head_sha,author_id,_json(authors),self.clock(),release_id,kind,item_id))
+            self._invalidate(db,release_id)
+            self._event(db,release_id,'lead_submission_resubmitted',actor,{'kind':kind,'item_id':item_id,
+                        'source_head_sha':item['head_sha'],'head_sha':head_sha,'pr_url':pr_url,'author_id':author_id,
+                        'plan_hash':plan_hash,'scope_hash':release['plan_scope_hash'],'contract':contract,
+                        'previous_contract':original['contract'],'attempts':item['attempts'],
+                        'previous_epoch':item['epoch'],'submitted_epoch':item['epoch']+1,
+                        'rejection_seq':rejections[-1],'evidence':json.loads(raw)})
+            return self._decoded(self._item(db,release_id,item_id,kind))
+
     def recover_submission(self, release_id, item_id, head_sha, pr_url, worker_id, lease_id,
                            plan_hash, evidence, actor, kind="story", live_worker=False):
         """Restore a proven unchanged prior submission after verified worker completion.
