@@ -18,6 +18,9 @@ from .providers import DockerAgent, build_prompt, check_changed_paths, REVIEW_CO
 from .runtime import changes, digest, git, plan_document, protected_changes, publish_copy, scan_files, validate_assignment
 from .recovery import source_handoff, unchanged_result, verified_pass_report
 
+from .approvals import validate_intent
+
+
 ROOT=Path(__file__).resolve().parents[1]
 DB=ROOT/".sdlc/state.sqlite3"
 OUT=ROOT/".sdlc/output"
@@ -265,6 +268,53 @@ def adopt_submission(p,args):
     finish_recovery_cache(control)
     return output('lead-submission.json',{'task_id':args.task_id,'revision':args.revision,
                   'lead_contract':args.lead_contract,'status':'SUBMITTED','result':result})
+
+def prepare_candidate(p,control,release_id,revision,actor):
+    require_current_plan(p,control,release_id)
+    result=control.freeze_candidate(release_id,revision,actor)
+    prior=kv('candidate:'+release_id)
+    snapshot=control.snapshot(release_id)
+    if (prior and prior.get('commit_sha')==revision and prior.get('policy_sha256')==digest(p)
+            and prior.get('evidence_sha256')==digest(snapshot)):
+        return result,prior
+    candidate={'commit_sha':revision,'changelog':'\n'.join('- '+i['title'] for i in snapshot['items']),
+               'evidence_sha256':digest(snapshot),'policy_sha256':digest(p)}
+    kv('candidate:'+release_id,candidate,True)
+    return result,candidate
+
+
+def approve(p,args):
+    """Only authenticated founder workflow execution consumes dashboard intent."""
+    validate_intent({'kind':args.kind,'release_id':args.release_id,
+                     'expected_hash':args.expected_hash,'revision':args.revision})
+    client=github(p);actor=principal(p,client)
+    if actor not in p['founders']['usernames']:
+        raise ValueError('Only the configured founder may approve.')
+    control=ledger(p);release_id=args.release_id
+    if args.kind=='plan':
+        manifest,actual=current_plan(p,release_id)
+        if actual!=args.expected_hash or manifest.get('hash')!=actual:
+            raise ValueError('The plan changed. Refresh and review it again.')
+        expected_revision=manifest.get('revision') or git(['rev-parse','HEAD'],ROOT)
+        if args.revision!=expected_revision:
+            raise ValueError('The displayed plan revision is stale.')
+        if manifest.get('pr_url'):
+            pr=client.pr(int(manifest['pr_url'].rsplit('/',1)[1]))
+            if pr['head']['sha']!=args.revision or pr['head']['repo']['full_name']!=client.repository:
+                raise ValueError('The planning PR changed. Refresh and review it again.')
+            if pr['state']=='closed' and not pr.get('merged'):
+                raise ValueError('The planning PR was withdrawn.')
+        result=control.approve_plan(release_id,actual,actor)
+    else:
+        manifest,actual=require_current_plan(p,control,release_id)
+        candidate=kv('candidate:'+release_id)
+        if (not candidate or digest(candidate)!=args.expected_hash or candidate.get('commit_sha')!=args.revision
+                or candidate.get('policy_sha256')!=digest(p)):
+            raise ValueError('The release changed. Refresh and review it again.')
+        result=control.approve_release(release_id,args.revision,actor)
+        kv('release-manifest-approval:'+release_id,{'manifest_hash':args.expected_hash,'actor':actor},True)
+    return output('founder-approval.json',{'kind':args.kind,'release_id':release_id,'actor':actor,
+                                        'revision':args.revision,'approved_hash':args.expected_hash,'result':result})
 
 
 def pr_files(client,pr,item,p):
@@ -627,7 +677,7 @@ def publish_result(p,client,control):
                 validate_assignment(story["allowed_paths"],p,infrastructure=story.get("kind")=="infrastructure")
                 control.upsert_story(release_id,story["id"],story["title"],{"allowed_paths":story["allowed_paths"],"acceptance":story["acceptance"],"role":story.get("role","coding"),"kind":story.get("kind","application")},story.get("depends_on",[]),result["worker_id"])
             control.submit_plan(release_id,plan_hash,result["worker_id"]);kv("plan:"+release_id,{"document":plan,"hash":plan_hash,"pr_url":pr["html_url"],"revision":sha},True)
-            client.comment(pr["number"],f"Founder review: approve this exact plan with `/sdlc approve-plan {release_id} {plan_hash}`. Changes to stories, specification or policy invalidate approval.")
+            client.comment(pr["number"],"Founder review: open the founder dashboard, review the plan and select Approve plan. No command comment is needed. Changes to stories, specification or policy require renewed approval.")
         else:
             control.associate_pr(release_id,item_id,sha,pr["html_url"],result["worker_id"],result["worker_id"],kind=kind,lease_id=result["lease_id"])
             if item.get("pr_url") and item["pr_url"]!=pr["html_url"]:
@@ -766,6 +816,13 @@ def reconcile(p,args):
             kv(key,{"revision":base,"time":time.time()},True);client.dispatch("agent-control.yml",{"action":"worker","role":role,"task-id":reference,"revision":base});scheduled.append(key)
             break
         refreshed=control.snapshot(release["id"]);rel=refreshed["releases"][0];items=refreshed["items"]
+        if rel['qa_passed'] and rel['integration_sha'] and rel['state'] in {'QA_PASSED','CANDIDATE_FROZEN'}:
+            prepare_candidate(p,control,rel['id'],rel['integration_sha'],'controller:candidate')
+        if rel['state']=='RELEASE_APPROVED' and p['authority']['production_release_enabled']:
+            key='publish-queued:'+rel['id']+':'+rel['candidate_sha']
+            if not kv(key):
+                client.dispatch('release.yml',{'phase':'publish','candidate-id':rel['id'],'revision':rel['candidate_sha']})
+                kv(key,{'queued':True},True)
         if items and all(i["status"] in {"INTEGRATED","DONE"} for i in items) and not rel["qa_passed"] and p["environment"]["staging"]["configured"] and p["checks"]["application_configured"]:
             revision=rel["integration_sha"];reference=f"{rel['id']}:story:{next(i['id'] for i in items if i['kind']=='story')}";key="queue:qa:"+reference;queued=kv(key)
             if not queued or queued.get("revision")!=revision:
@@ -777,20 +834,22 @@ def reconcile(p,args):
 
 def release(p,args):
     client=github(p);actor=principal(p,client)
-    if actor not in p["founders"]["usernames"]:raise ValueError("Only a founder can request candidate/publication.")
+    if actor not in p["founders"]["usernames"] and not (actor=='github-actions[bot]' and args.phase=='publish'):
+        raise ValueError("Only a founder can request a candidate; publication needs recorded founder approval.")
     control=ledger(p);release_id=args.candidate_id
     require_current_plan(p,control,release_id)
     if args.phase=="candidate":
-        result=control.freeze_candidate(release_id,args.revision,actor)
-        snapshot=control.snapshot(release_id);notes="\n".join("- "+i["title"] for i in snapshot["items"])
-        candidate={"commit_sha":args.revision,"changelog":notes,"evidence_sha256":digest(snapshot),"policy_sha256":digest(p)}
-        kv("candidate:"+release_id,candidate,True);output("candidate-manifest.json",candidate)
-        return {"candidate":result,"manifest_sha256":digest(candidate),"founder_command":f"/sdlc approve-release {release_id} {args.revision} {digest(candidate)}"}
+        result,candidate=prepare_candidate(p,control,release_id,args.revision,actor)
+        output("candidate-manifest.json",candidate)
+        return {"candidate":result,"manifest_sha256":digest(candidate),"next":"Review and approve the release in the founder dashboard."}
     if not p["authority"]["production_release_enabled"]:raise ValueError("Production release is disabled until a real deployment adapter and founder policy are configured.")
     current=control.snapshot(release_id)["releases"][0]
     if current.get("release_approved_sha")!=args.revision or current.get("candidate_sha")!=args.revision:raise ValueError("Founder approval is missing or stale for this exact candidate.")
     manifest=kv("candidate:"+release_id);approval=kv("release-manifest-approval:"+release_id)
     if not manifest or not approval or digest(manifest)!=approval["manifest_hash"] or manifest["policy_sha256"]!=digest(p):raise ValueError("Candidate artifact/evidence/policy approval is missing or stale.")
+    _,actual=current_plan(p,release_id)
+    if current.get('plan_approved_hash')!=actual:raise ValueError('Plan approval is stale.')
+    control.freeze_candidate(release_id,args.revision,actor)  # Recheck current CI/review/QA before publication.
     title=current["title"];notes="\n".join("- "+i["title"] for i in control.snapshot(release_id)["items"])
     tag="release-"+re.sub(r"[^A-Za-z0-9._-]","-",release_id)
     published=client.request("POST",client.root+"/releases",{"tag_name":tag,"target_commitish":args.revision,"name":title,"body":notes,"draft":False})
@@ -807,6 +866,8 @@ def parser():
         x=sub.add_parser(name);x.add_argument("--event-path",default=os.environ.get("GITHUB_EVENT_PATH",""));x.add_argument("--event-name",default=os.environ.get("GITHUB_EVENT_NAME",""))
     w=sub.add_parser("worker");w.add_argument("--role",required=True);w.add_argument("--task-id",required=True);w.add_argument("--revision",required=True);w.add_argument("--event-path")
     a=sub.add_parser('adopt-submission');a.add_argument('--task-id',required=True);a.add_argument('--revision',required=True);a.add_argument('--pull-request',type=int,required=True);a.add_argument('--plan-hash',required=True);a.add_argument('--lead-contract',required=True)
+
+    a=sub.add_parser('approve');a.add_argument('--kind',choices=['plan','release'],required=True);a.add_argument('--release-id',required=True);a.add_argument('--expected-hash',required=True);a.add_argument('--revision',required=True)
     r=sub.add_parser("release");r.add_argument("--phase",choices=["candidate","publish"],required=True);r.add_argument("--candidate-id",required=True);r.add_argument("--revision",required=True)
     return p
 
@@ -823,6 +884,8 @@ def main(argv=None):
         elif args.command=="event":result=event(p,args)
         elif args.command=="worker":result=worker(p,args)
         elif args.command=='adopt-submission':result=adopt_submission(p,args)
+
+        elif args.command=='approve':result=approve(p,args)
         elif args.command=="reconcile":result=reconcile(p,args)
         else:result=release(p,args)
         print(json.dumps(result,indent=2));return 0

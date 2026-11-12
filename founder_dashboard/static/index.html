@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>InterViz · Founder workspace</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="brand-mark">i<span>v</span></span><span>InterViz<small>FOUNDER WORKSPACE</small></span></a>
+  <div class="workspace-label">WORKSPACE <span>LOCAL</span></div>
+  <nav aria-label="Main navigation">
+    <button class="nav active" data-view="overview"><span>◈</span> Overview</button>
+    <button class="nav" data-view="work"><span>▤</span> Work items <b id="nav-count">—</b></button>
+    <button class="nav" data-view="agents"><span>⌘</span> Agent activity</button>
+    <button class="nav" data-view="timeline"><span>↺</span> Timeline</button>
+  </nav>
+  <div class="sidebar-card"><span class="eyebrow">YOU SET THE DIRECTION</span><p>Agents do the work.<br>You keep the controls.</p><a href="https://github.com/varunvvaidya1989/InterViz/issues/new?template=plan.yml" target="_blank" rel="noopener noreferrer">New release plan <span>↗</span></a></div>
+  <div class="sidebar-bottom"><span class="avatar">VV</span><div>Founder<small id="repo-name">InterViz</small></div><span class="connection-dot"></span></div>
+</aside>
+<div class="shell">
+  <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span><strong id="page-name">Overview</strong></div><div class="top-actions"><span class="readonly"><span></span><span id="workspace-mode"></span></span><a href="https://github.com/varunvvaidya1989/InterViz" target="_blank" rel="noopener noreferrer" aria-label="Open GitHub repository">GitHub ↗</a></div></header>
+  <main>
+    <div class="heading"><div><div class="eyebrow">THE BIG PICTURE</div><h1 id="page-title">Your release, in focus.</h1><p id="page-subtitle">A clear view of the work, the agents, and what needs you.</p></div><div class="sync"><span id="sync-label" role="status">Connecting to GitHub…</span><button id="refresh" class="button">↻ <span>Refresh</span></button></div></div>
+    <div id="error" class="error-banner" hidden role="alert"></div>
+    <div id="loading" class="loading"><span class="spinner"></span><h2>Gathering your workspace</h2><p>Reading the current release ledger, PR checks, and agent runs from GitHub.</p></div>
+    <div id="content" hidden>
+      <section id="metrics" class="metrics" aria-label="Release statistics"></section>
+      <div id="overview-view" class="view">
+        <section class="panel approvals-panel" id="approvals-panel" aria-labelledby="approvals-heading">
+          <div class="panel-top"><div><span class="eyebrow" data-approval-i18n="approval.eyebrow"></span><h2 id="approvals-heading" data-approval-i18n="approval.heading"></h2></div></div>
+          <p class="approvals-intro" data-approval-i18n="approval.intro"></p>
+          <div id="approval-access" class="approval-access" role="status"></div>
+          <div id="approval-cards"></div>
+          <div id="approval-feedback" role="status" aria-live="polite" aria-atomic="true"></div>
+        </section>
+        <div class="overview-grid">
+          <section class="panel release-panel"><div class="panel-top"><div class="eyebrow">CURRENT RELEASE</div><span id="release-badge" class="pill"></span></div><div class="release-title"><span id="release-id" class="release-icon">R1</span><div><h2 id="release-title"></h2><p id="release-description"></p></div></div><div id="pipeline" class="pipeline"></div><div class="progress-caption"><span id="progress-text"></span><strong id="progress-percent"></strong></div><div class="progress-track"><div id="progress-fill"></div></div><div class="release-footer"><span id="approval-note"></span><a id="plan-link" target="_blank" rel="noopener noreferrer">View release plan ↗</a></div></section>
+          <section class="panel attention-panel"><div class="panel-top"><h2>Needs your attention</h2><span id="attention-count" class="count-pill">0</span></div><div id="attention-list"></div></section>
+        </div>
+        <section class="panel activity-panel"><div class="panel-top"><div><span class="eyebrow">ON THE GROUND</span><h2>Agent activity</h2></div><button class="text-button" data-view="agents">View all runs →</button></div><div id="agent-preview" class="agent-grid"></div></section>
+        <section class="panel work-panel"><div class="panel-top"><div><span class="eyebrow">APPROVED SCOPE</span><h2>Work in motion</h2></div><button class="text-button" data-view="work">All work items →</button></div><div id="work-preview"></div></section>
+      </div>
+      <div id="work-view" class="view" hidden><section class="panel"><div class="work-controls"><label class="search"><span>⌕</span><input id="search" placeholder="Search task ID or title…" aria-label="Search work items"></label><select id="status-filter" aria-label="Filter work status"><option value="all">All statuses</option><option value="ready">Ready</option><option value="running">Running</option><option value="reviewing">Reviewing</option><option value="rework">Rework</option><option value="blocked">Blocked</option><option value="waiting">Waiting on dependencies</option><option value="integrated">Integrated</option></select><select id="role-filter" aria-label="Filter agent role"><option value="all">All roles</option><option value="lead">Lead</option><option value="devops">DevOps</option><option value="coding">Coding</option><option value="ui-ux">UI / UX</option><option value="qa">QA</option></select><div class="segmented"><button id="table-toggle" class="selected" aria-pressed="true">List</button><button id="board-toggle" aria-pressed="false">Board</button></div></div><div id="work-results"></div><div id="legacy-note" class="footnote"></div></section></div>
+      <div id="agents-view" class="view" hidden><section class="panel"><div class="panel-top"><h2>Active workflows</h2><span class="subtle">GitHub-hosted Linux runners</span></div><div id="agent-full" class="agent-grid"></div></section><section class="panel run-history"><div class="panel-top"><h2>Recent workflow runs</h2><span class="subtle">Latest 20 runs</span></div><div id="run-history"></div></section></div>
+      <div id="timeline-view" class="view" hidden><section class="panel"><div class="panel-top"><h2>Release activity</h2><span class="subtle">Latest 60 controller events · India time</span></div><div id="timeline"></div></section></div>
+      <footer><span><span class="connection-dot"></span> GitHub + controller ledger <span id="source-note"></span></span><span>Refreshes every 60s · Asia / Kolkata</span></footer>
+    </div>
+  </main>
+</div>
+<dialog id="task-dialog"><div class="dialog-top"><span class="eyebrow">WORK ITEM DETAILS</span><button id="close-dialog" aria-label="Close task details">×</button></div><div id="task-detail"></div></dialog>
+<script src="/app.js"></script>
+</body></html>
